@@ -1,12 +1,30 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'services/firestore_service.dart';
 
-void main() {
-  runApp(const TodoApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  bool firebaseReady = false;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await FirestoreService.instance.init();
+    firebaseReady = FirestoreService.instance.isAvailable;
+  } catch (e) {
+    // Firebase 미설정 또는 네트워크 오류 → 로컬 더미 데이터로 실행
+    debugPrint('Firebase 초기화 실패, 로컬 모드로 실행: $e');
+  }
+
+  runApp(TodoApp(useFirebase: firebaseReady));
 }
 
 class TodoApp extends StatelessWidget {
-  const TodoApp({super.key});
+  final bool useFirebase;
+  const TodoApp({super.key, this.useFirebase = false});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +36,7 @@ class TodoApp extends StatelessWidget {
         fontFamily: 'Malgun Gothic',
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const HomeScreen(),
+      home: HomeScreen(useFirebase: useFirebase),
     );
   }
 }

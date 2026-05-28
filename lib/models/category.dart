@@ -10,6 +10,21 @@ class Category {
     required this.name,
     required this.type,
   });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'type': type.name,
+      };
+
+  factory Category.fromMap(Map<String, dynamic> data) => Category(
+        id: data['id'] as String,
+        name: data['name'] as String? ?? '',
+        type: CategoryType.values.firstWhere(
+          (t) => t.name == data['type'],
+          orElse: () => CategoryType.custom,
+        ),
+      );
 }
 
 const List<Category> defaultCategories = [

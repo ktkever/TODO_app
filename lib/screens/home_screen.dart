@@ -1,15 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/dummy_data.dart';
 import '../models/task.dart';
 import '../screens/calendar_screen.dart';
+import '../services/firestore_service.dart';
 import '../widgets/detail_panel.dart';
 import '../widgets/grouped_task_list_view.dart';
 import '../widgets/task_list_view.dart';
 import '../widgets/task_sidebar.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool useFirebase;
+  const HomeScreen({super.key, this.useFirebase = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -18,14 +22,55 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategoryId = 'today';
   bool _isCalendarView = false;
-  late List<Task> _tasks;
+  List<Task> _tasks = [];
+  List<Category> _customCategories = [];
   Task? _selectedTask;
+  bool _loading = true;
+
+  StreamSubscription<List<Task>>? _tasksSub;
+  StreamSubscription<List<Category>>? _categoriesSub;
 
   @override
   void initState() {
     super.initState();
-    _tasks = buildDummyTasks();
+    if (widget.useFirebase) {
+      _initFirestore();
+    } else {
+      _tasks = buildDummyTasks();
+      _customCategories = List.from(dummyCustomCategories);
+      _loading = false;
+    }
   }
+
+  Future<void> _initFirestore() async {
+    final svc = FirestoreService.instance;
+
+    // 첫 실행이면 더미 데이터로 초기 시드
+    await svc.seedIfEmpty(buildDummyTasks(), List.from(dummyCustomCategories));
+
+    // 실시간 스트림 구독
+    _categoriesSub = svc.watchCategories().listen((cats) {
+      if (mounted) {
+        setState(() {
+          _customCategories = cats;
+          _loading = false;
+        });
+      }
+    });
+
+    _tasksSub = svc.watchTasks().listen((tasks) {
+      if (mounted) setState(() => _tasks = tasks);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tasksSub?.cancel();
+    _categoriesSub?.cancel();
+    super.dispose();
+  }
+
+  // ── 이벤트 핸들러 ─────────────────────────────────────────────
 
   void _onCategorySelected(String categoryId) {
     setState(() {
@@ -46,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       final task = _tasks.firstWhere((t) => t.id == taskId);
       task.isCompleted = !task.isCompleted;
+      if (widget.useFirebase) FirestoreService.instance.updateTask(task);
     });
   }
 
@@ -61,10 +107,13 @@ class _HomeScreenState extends State<HomeScreen> {
       if (idx != -1) _tasks[idx] = updated;
       _selectedTask = updated;
     });
+    if (widget.useFirebase) FirestoreService.instance.updateTask(updated);
   }
 
+  // ── 필터 ─────────────────────────────────────────────────────
+
   List<Task> get _filteredTasks {
-    final allCategories = [...defaultCategories, ...dummyCustomCategories];
+    final allCategories = [...defaultCategories, ..._customCategories];
     final selected =
         allCategories.firstWhere((c) => c.id == _selectedCategoryId);
 
@@ -80,11 +129,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String get _selectedCategoryName {
-    final allCategories = [...defaultCategories, ...dummyCustomCategories];
+    final allCategories = [...defaultCategories, ..._customCategories];
     return allCategories.firstWhere((c) => c.id == _selectedCategoryId).name;
   }
 
+  // ── 중앙 메인 콘텐츠 ──────────────────────────────────────────
+
   Widget _buildMainContent() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (_isCalendarView) {
       return CalendarScreen(
         tasks: _tasks,
@@ -93,9 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // 사용자 지정 카테고리: 단일 카테고리이므로 그룹 헤더 없이 플랫 리스트
-    final isCustom =
-        dummyCustomCategories.any((c) => c.id == _selectedCategoryId);
+    final isCustom = _customCategories.any((c) => c.id == _selectedCategoryId);
     if (isCustom) {
       return TaskListView(
         tasks: _filteredTasks,
@@ -106,10 +159,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // 기본 카테고리 4개 모두 — 카테고리별 그룹화 뷰
     return GroupedTaskListView(
       tasks: _filteredTasks,
-      customCategories: dummyCustomCategories,
+      customCategories: _customCategories,
       categoryName: _selectedCategoryName,
       onTaskToggled: _onTaskToggled,
       onTaskSelected: _onTaskSelected,
@@ -120,39 +172,68 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          TaskSidebar(
-            customCategories: dummyCustomCategories,
-            selectedCategoryId: _selectedCategoryId,
-            isCalendarView: _isCalendarView,
-            onCategorySelected: _onCategorySelected,
-            onCalendarToggle: _onCalendarToggle,
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          Expanded(child: _buildMainContent()),
-          // 슬라이드 상세 패널 — OverflowBox로 레이아웃 공간 고정, ClipRect로 시각 클리핑
-          ClipRect(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
-              width: _selectedTask != null ? 300 : 0,
-              child: OverflowBox(
-                maxWidth: 300,
-                minWidth: 0,
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: 300,
-                  child: _selectedTask != null
-                      ? DetailPanel(
-                          key: ValueKey(_selectedTask!.id),
-                          task: _selectedTask!,
-                          onClose: () => setState(() => _selectedTask = null),
-                          onTaskChanged: _onTaskChanged,
-                        )
-                      : const SizedBox.shrink(),
+          // Firebase 미연결 배너
+          if (!widget.useFirebase)
+            Material(
+              color: const Color(0xFFFFF4CE),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_off, size: 16,
+                        color: Color(0xFF8A6914)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '로컬 모드 — Firebase 미연결. flutterfire configure 후 재빌드하면 클라우드 동기화가 활성화됩니다.',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF8A6914)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+          Expanded(
+            child: Row(
+              children: [
+                TaskSidebar(
+                  customCategories: _customCategories,
+                  selectedCategoryId: _selectedCategoryId,
+                  isCalendarView: _isCalendarView,
+                  onCategorySelected: _onCategorySelected,
+                  onCalendarToggle: _onCalendarToggle,
+                ),
+                const VerticalDivider(width: 1, thickness: 1),
+                Expanded(child: _buildMainContent()),
+                ClipRect(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    width: _selectedTask != null ? 300 : 0,
+                    child: OverflowBox(
+                      maxWidth: 300,
+                      minWidth: 0,
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 300,
+                        child: _selectedTask != null
+                            ? DetailPanel(
+                                key: ValueKey(_selectedTask!.id),
+                                task: _selectedTask!,
+                                onClose: () =>
+                                    setState(() => _selectedTask = null),
+                                onTaskChanged: _onTaskChanged,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
