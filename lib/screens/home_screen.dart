@@ -92,17 +92,24 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedTaskId: _selectedTask?.id,
       );
     }
-    if (_selectedCategoryId == 'unplanned') {
-      return GroupedTaskListView(
+
+    // 사용자 지정 카테고리: 단일 카테고리이므로 그룹 헤더 없이 플랫 리스트
+    final isCustom =
+        dummyCustomCategories.any((c) => c.id == _selectedCategoryId);
+    if (isCustom) {
+      return TaskListView(
         tasks: _filteredTasks,
-        customCategories: dummyCustomCategories,
+        categoryName: _selectedCategoryName,
         onTaskToggled: _onTaskToggled,
         onTaskSelected: _onTaskSelected,
         selectedTaskId: _selectedTask?.id,
       );
     }
-    return TaskListView(
+
+    // 기본 카테고리 4개 모두 — 카테고리별 그룹화 뷰
+    return GroupedTaskListView(
       tasks: _filteredTasks,
+      customCategories: dummyCustomCategories,
       categoryName: _selectedCategoryName,
       onTaskToggled: _onTaskToggled,
       onTaskSelected: _onTaskSelected,

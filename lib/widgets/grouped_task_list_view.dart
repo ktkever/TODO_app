@@ -5,6 +5,7 @@ import '../models/task.dart';
 class GroupedTaskListView extends StatelessWidget {
   final List<Task> tasks;
   final List<Category> customCategories;
+  final String categoryName;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
   final String? selectedTaskId;
@@ -13,6 +14,7 @@ class GroupedTaskListView extends StatelessWidget {
     super.key,
     required this.tasks,
     required this.customCategories,
+    required this.categoryName,
     required this.onTaskToggled,
     required this.onTaskSelected,
     this.selectedTaskId,
@@ -25,11 +27,11 @@ class GroupedTaskListView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
           child: Text(
-            '계획 안된 일정',
-            style: TextStyle(
+            categoryName,
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0078D4),
@@ -40,7 +42,7 @@ class GroupedTaskListView extends StatelessWidget {
           child: tasks.isEmpty
               ? const Center(
                   child: Text(
-                    '계획 안된 일정이 없습니다.',
+                    '할 일이 없습니다.',
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                 )
