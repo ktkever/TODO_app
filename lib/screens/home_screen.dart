@@ -3,6 +3,7 @@ import '../models/category.dart';
 import '../models/dummy_data.dart';
 import '../models/task.dart';
 import '../widgets/detail_panel.dart';
+import '../widgets/grouped_task_list_view.dart';
 import '../widgets/task_list_view.dart';
 import '../widgets/task_sidebar.dart';
 
@@ -92,13 +93,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const VerticalDivider(width: 1, thickness: 1),
           Expanded(
-            child: TaskListView(
-              tasks: _filteredTasks,
-              categoryName: _selectedCategoryName,
-              onTaskToggled: _onTaskToggled,
-              onTaskSelected: _onTaskSelected,
-              selectedTaskId: _selectedTask?.id,
-            ),
+            child: _selectedCategoryId == 'unplanned'
+                ? GroupedTaskListView(
+                    tasks: _filteredTasks,
+                    customCategories: dummyCustomCategories,
+                    onTaskToggled: _onTaskToggled,
+                    onTaskSelected: _onTaskSelected,
+                    selectedTaskId: _selectedTask?.id,
+                  )
+                : TaskListView(
+                    tasks: _filteredTasks,
+                    categoryName: _selectedCategoryName,
+                    onTaskToggled: _onTaskToggled,
+                    onTaskSelected: _onTaskSelected,
+                    selectedTaskId: _selectedTask?.id,
+                  ),
           ),
           // 슬라이드 상세 패널 — OverflowBox로 레이아웃 공간 고정, ClipRect로 시각 클리핑
           ClipRect(
