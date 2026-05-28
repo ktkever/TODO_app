@@ -5,12 +5,16 @@ class TaskListView extends StatelessWidget {
   final List<Task> tasks;
   final String categoryName;
   final ValueChanged<String> onTaskToggled;
+  final ValueChanged<Task> onTaskSelected;
+  final String? selectedTaskId;
 
   const TaskListView({
     super.key,
     required this.tasks,
     required this.categoryName,
     required this.onTaskToggled,
+    required this.onTaskSelected,
+    this.selectedTaskId,
   });
 
   @override
@@ -44,7 +48,9 @@ class TaskListView extends StatelessWidget {
                     final task = tasks[index];
                     return _TaskItem(
                       task: task,
+                      isSelected: task.id == selectedTaskId,
                       onToggle: () => onTaskToggled(task.id),
+                      onTap: () => onTaskSelected(task),
                     );
                   },
                 ),
@@ -56,55 +62,72 @@ class TaskListView extends StatelessWidget {
 
 class _TaskItem extends StatelessWidget {
   final Task task;
+  final bool isSelected;
   final VoidCallback onToggle;
+  final VoidCallback onTap;
 
-  const _TaskItem({required this.task, required this.onToggle});
+  const _TaskItem({
+    required this.task,
+    required this.isSelected,
+    required this.onToggle,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onToggle,
-            child: Container(
-              width: 22,
-              height: 22,
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: task.isCompleted
-                      ? const Color(0xFF0078D4)
-                      : Colors.grey[400]!,
-                  width: 2,
-                ),
-                color: task.isCompleted
-                    ? const Color(0xFF0078D4)
-                    : Colors.transparent,
-              ),
-              child: task.isCompleted
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                task.title,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: task.isCompleted ? Colors.grey[400] : Colors.grey[800],
-                  decoration: task.isCompleted
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
+    return Material(
+      color: isSelected ? const Color(0xFFEFF6FC) : Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: onToggle,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: task.isCompleted
+                          ? const Color(0xFF0078D4)
+                          : Colors.grey[400]!,
+                      width: 2,
+                    ),
+                    color: task.isCompleted
+                        ? const Color(0xFF0078D4)
+                        : Colors.transparent,
+                  ),
+                  child: task.isCompleted
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : null,
                 ),
               ),
-            ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: task.isCompleted
+                          ? Colors.grey[400]
+                          : Colors.grey[800],
+                      decoration: task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,10 +1,17 @@
+enum RepeatType { none, daily, weekly, monthly, yearly, custom }
+
 class Task {
   final String id;
-  final String title;
+  String title;
   bool isCompleted;
-  final String? categoryId;
-  final bool isToday;
-  final DateTime? dueDate;
+  String? categoryId;
+  bool isToday;
+  DateTime? startDate;
+  DateTime? dueDate;
+  RepeatType repeatType;
+  int repeatIntervalDays;
+  bool reminderEnabled;
+  String memo;
 
   Task({
     required this.id,
@@ -12,6 +19,11 @@ class Task {
     this.isCompleted = false,
     this.categoryId,
     this.isToday = false,
+    this.startDate,
     this.dueDate,
+    this.repeatType = RepeatType.none,
+    this.repeatIntervalDays = 1,
+    this.reminderEnabled = false,
+    this.memo = '',
   });
 }

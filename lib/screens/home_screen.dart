@@ -15,7 +15,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategoryId = 'today';
+  bool _isCalendarView = false;
   late List<Task> _tasks;
+  Task? _selectedTask;
 
   @override
   void initState() {
@@ -26,7 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onCategorySelected(String categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
+      _isCalendarView = false;
     });
+  }
+
+  void _onCalendarToggle() {
+    setState(() => _isCalendarView = !_isCalendarView);
   }
 
   void _onTaskToggled(String taskId) {
@@ -36,16 +43,33 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _onTaskSelected(Task task) {
+    setState(() {
+      _selectedTask = (_selectedTask?.id == task.id) ? null : task;
+    });
+  }
+
+  void _onTaskChanged(Task updated) {
+    setState(() {
+      final idx = _tasks.indexWhere((t) => t.id == updated.id);
+      if (idx != -1) _tasks[idx] = updated;
+      _selectedTask = updated;
+    });
+  }
+
   List<Task> get _filteredTasks {
     final allCategories = [...defaultCategories, ...dummyCustomCategories];
-    final selected = allCategories.firstWhere((c) => c.id == _selectedCategoryId);
+    final selected =
+        allCategories.firstWhere((c) => c.id == _selectedCategoryId);
 
     return switch (selected.type) {
       CategoryType.today => _tasks.where((t) => t.isToday).toList(),
       CategoryType.planned => _tasks.where((t) => t.dueDate != null).toList(),
-      CategoryType.unplanned => _tasks.where((t) => t.dueDate == null).toList(),
+      CategoryType.unplanned =>
+        _tasks.where((t) => t.dueDate == null && t.startDate == null).toList(),
       CategoryType.all => List.from(_tasks),
-      CategoryType.custom => _tasks.where((t) => t.categoryId == selected.id).toList(),
+      CategoryType.custom =>
+        _tasks.where((t) => t.categoryId == selected.id).toList(),
     };
   }
 
@@ -62,7 +86,9 @@ class _HomeScreenState extends State<HomeScreen> {
           TaskSidebar(
             customCategories: dummyCustomCategories,
             selectedCategoryId: _selectedCategoryId,
+            isCalendarView: _isCalendarView,
             onCategorySelected: _onCategorySelected,
+            onCalendarToggle: _onCalendarToggle,
           ),
           const VerticalDivider(width: 1, thickness: 1),
           Expanded(
@@ -70,9 +96,34 @@ class _HomeScreenState extends State<HomeScreen> {
               tasks: _filteredTasks,
               categoryName: _selectedCategoryName,
               onTaskToggled: _onTaskToggled,
+              onTaskSelected: _onTaskSelected,
+              selectedTaskId: _selectedTask?.id,
             ),
           ),
-          const DetailPanel(),
+          // 슬라이드 상세 패널 — OverflowBox로 레이아웃 공간 고정, ClipRect로 시각 클리핑
+          ClipRect(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              width: _selectedTask != null ? 300 : 0,
+              child: OverflowBox(
+                maxWidth: 300,
+                minWidth: 0,
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: 300,
+                  child: _selectedTask != null
+                      ? DetailPanel(
+                          key: ValueKey(_selectedTask!.id),
+                          task: _selectedTask!,
+                          onClose: () => setState(() => _selectedTask = null),
+                          onTaskChanged: _onTaskChanged,
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

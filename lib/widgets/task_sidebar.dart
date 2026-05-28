@@ -4,13 +4,17 @@ import '../models/category.dart';
 class TaskSidebar extends StatelessWidget {
   final List<Category> customCategories;
   final String selectedCategoryId;
+  final bool isCalendarView;
   final ValueChanged<String> onCategorySelected;
+  final VoidCallback onCalendarToggle;
 
   const TaskSidebar({
     super.key,
     required this.customCategories,
     required this.selectedCategoryId,
+    required this.isCalendarView,
     required this.onCategorySelected,
+    required this.onCalendarToggle,
   });
 
   @override
@@ -34,7 +38,7 @@ class TaskSidebar extends StatelessWidget {
                 ],
               ),
             ),
-            _buildBottomButtons(context),
+            _buildBottomButtons(),
           ],
         ),
       ),
@@ -42,21 +46,26 @@ class TaskSidebar extends StatelessWidget {
   }
 
   List<Widget> _buildCategoryItems(List<Category> categories) {
-    return categories.map((cat) => _CategoryItem(
-      category: cat,
-      isSelected: cat.id == selectedCategoryId,
-      onTap: () => onCategorySelected(cat.id),
-    )).toList();
+    return categories
+        .map((cat) => _CategoryItem(
+              category: cat,
+              isSelected: cat.id == selectedCategoryId && !isCalendarView,
+              onTap: () => onCategorySelected(cat.id),
+            ))
+        .toList();
   }
 
-  Widget _buildBottomButtons(BuildContext context) {
+  Widget _buildBottomButtons() {
     return Column(
       children: [
         const Divider(thickness: 1, height: 1),
         _SidebarButton(
-          icon: Icons.calendar_month_outlined,
+          icon: isCalendarView
+              ? Icons.calendar_month
+              : Icons.calendar_month_outlined,
           label: '달력',
-          onTap: () {},
+          isActive: isCalendarView,
+          onTap: onCalendarToggle,
         ),
         _SidebarButton(
           icon: Icons.add,
@@ -81,18 +90,13 @@ class _CategoryItem extends StatelessWidget {
   });
 
   IconData _iconFor(CategoryType type) {
-    switch (type) {
-      case CategoryType.today:
-        return Icons.wb_sunny_outlined;
-      case CategoryType.planned:
-        return Icons.calendar_today_outlined;
-      case CategoryType.unplanned:
-        return Icons.inbox_outlined;
-      case CategoryType.all:
-        return Icons.list_outlined;
-      case CategoryType.custom:
-        return Icons.label_outline;
-    }
+    return switch (type) {
+      CategoryType.today => Icons.wb_sunny_outlined,
+      CategoryType.planned => Icons.calendar_today_outlined,
+      CategoryType.unplanned => Icons.inbox_outlined,
+      CategoryType.all => Icons.list_outlined,
+      CategoryType.custom => Icons.label_outline,
+    };
   }
 
   @override
@@ -127,27 +131,41 @@ class _CategoryItem extends StatelessWidget {
 class _SidebarButton extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool isActive;
   final VoidCallback onTap;
 
   const _SidebarButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.isActive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        color: isActive
+            ? const Color(0xFFDEECF9)
+            : Colors.transparent,
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.grey[700]),
+            Icon(
+              icon,
+              size: 20,
+              color: isActive ? const Color(0xFF0078D4) : Colors.grey[700],
+            ),
             const SizedBox(width: 12),
             Text(
               label,
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              style: TextStyle(
+                fontSize: 14,
+                color: isActive ? const Color(0xFF0078D4) : Colors.grey[700],
+                fontWeight:
+                    isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
             ),
           ],
         ),
