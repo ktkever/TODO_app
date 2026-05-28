@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/dummy_data.dart';
 import '../models/task.dart';
+import '../screens/calendar_screen.dart';
 import '../widgets/detail_panel.dart';
 import '../widgets/grouped_task_list_view.dart';
 import '../widgets/task_list_view.dart';
@@ -30,11 +31,15 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedCategoryId = categoryId;
       _isCalendarView = false;
+      _selectedTask = null;
     });
   }
 
   void _onCalendarToggle() {
-    setState(() => _isCalendarView = !_isCalendarView);
+    setState(() {
+      _isCalendarView = !_isCalendarView;
+      _selectedTask = null;
+    });
   }
 
   void _onTaskToggled(String taskId) {
@@ -79,6 +84,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return allCategories.firstWhere((c) => c.id == _selectedCategoryId).name;
   }
 
+  Widget _buildMainContent() {
+    if (_isCalendarView) {
+      return CalendarScreen(
+        tasks: _tasks,
+        onTaskSelected: _onTaskSelected,
+        selectedTaskId: _selectedTask?.id,
+      );
+    }
+    if (_selectedCategoryId == 'unplanned') {
+      return GroupedTaskListView(
+        tasks: _filteredTasks,
+        customCategories: dummyCustomCategories,
+        onTaskToggled: _onTaskToggled,
+        onTaskSelected: _onTaskSelected,
+        selectedTaskId: _selectedTask?.id,
+      );
+    }
+    return TaskListView(
+      tasks: _filteredTasks,
+      categoryName: _selectedCategoryName,
+      onTaskToggled: _onTaskToggled,
+      onTaskSelected: _onTaskSelected,
+      selectedTaskId: _selectedTask?.id,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,23 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onCalendarToggle: _onCalendarToggle,
           ),
           const VerticalDivider(width: 1, thickness: 1),
-          Expanded(
-            child: _selectedCategoryId == 'unplanned'
-                ? GroupedTaskListView(
-                    tasks: _filteredTasks,
-                    customCategories: dummyCustomCategories,
-                    onTaskToggled: _onTaskToggled,
-                    onTaskSelected: _onTaskSelected,
-                    selectedTaskId: _selectedTask?.id,
-                  )
-                : TaskListView(
-                    tasks: _filteredTasks,
-                    categoryName: _selectedCategoryName,
-                    onTaskToggled: _onTaskToggled,
-                    onTaskSelected: _onTaskSelected,
-                    selectedTaskId: _selectedTask?.id,
-                  ),
-          ),
+          Expanded(child: _buildMainContent()),
           // 슬라이드 상세 패널 — OverflowBox로 레이아웃 공간 고정, ClipRect로 시각 클리핑
           ClipRect(
             child: AnimatedContainer(
