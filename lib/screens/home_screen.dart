@@ -291,6 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? DetailPanel(
                                 key: ValueKey(_selectedTask!.id),
                                 task: _selectedTask!,
+                                customCategories: _customCategories,
                                 onClose: () =>
                                     setState(() => _selectedTask = null),
                                 onTaskChanged: _onTaskChanged,

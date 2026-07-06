@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/category.dart';
 import '../models/task.dart';
 import '../theme/app_colors.dart';
 
 class DetailPanel extends StatefulWidget {
   final Task task;
+  final List<Category> customCategories;
   final VoidCallback onClose;
   final ValueChanged<Task> onTaskChanged;
 
   const DetailPanel({
     super.key,
     required this.task,
+    required this.customCategories,
     required this.onClose,
     required this.onTaskChanged,
   });
@@ -27,8 +30,11 @@ class _DetailPanelState extends State<DetailPanel> {
   late RepeatType _repeatType;
   late int _repeatIntervalDays;
   late bool _reminderEnabled;
+  late String? _categoryId;
+  late TextEditingController _titleController;
   late TextEditingController _memoController;
   late TextEditingController _intervalController;
+  String? _dateError;
 
   @override
   void initState() {
@@ -40,6 +46,7 @@ class _DetailPanelState extends State<DetailPanel> {
   void didUpdateWidget(DetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.task.id != widget.task.id) {
+      _titleController.dispose();
       _memoController.dispose();
       _intervalController.dispose();
       _syncFromTask(widget.task);
@@ -54,14 +61,18 @@ class _DetailPanelState extends State<DetailPanel> {
     _repeatType = task.repeatType;
     _repeatIntervalDays = task.repeatIntervalDays;
     _reminderEnabled = task.reminderEnabled;
+    _categoryId = task.categoryId;
+    _titleController = TextEditingController(text: task.title);
     _memoController = TextEditingController(text: task.memo);
     _intervalController = TextEditingController(
       text: task.repeatIntervalDays.toString(),
     );
+    _dateError = null;
   }
 
   @override
   void dispose() {
+    _titleController.dispose();
     _memoController.dispose();
     _intervalController.dispose();
     super.dispose();
@@ -69,6 +80,8 @@ class _DetailPanelState extends State<DetailPanel> {
 
   void _notifyChanged() {
     widget.task
+      ..title = _titleController.text
+      ..categoryId = _categoryId
       ..isToday = _isToday
       ..startDate = _isRange ? _startDate : null
       ..dueDate = _dueDate
@@ -88,7 +101,22 @@ class _DetailPanelState extends State<DetailPanel> {
       lastDate: DateTime(2030),
     );
     if (picked == null) return;
+
+    // 기간 설정 시 시작일이 종료일보다 늦을 수 없음 — 달력 뷰가 역전된
+    // 구간을 그리지 못해 일정이 아예 안 보이는 문제로 이어지므로 저장 전에 막는다.
+    if (_isRange) {
+      if (isStart && _dueDate != null && picked.isAfter(_dueDate!)) {
+        setState(() => _dateError = '시작일은 종료일보다 늦을 수 없습니다.');
+        return;
+      }
+      if (!isStart && _startDate != null && picked.isBefore(_startDate!)) {
+        setState(() => _dateError = '종료일은 시작일보다 빠를 수 없습니다.');
+        return;
+      }
+    }
+
     setState(() {
+      _dateError = null;
       if (isStart) {
         _startDate = picked;
       } else {
@@ -114,6 +142,8 @@ class _DetailPanelState extends State<DetailPanel> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
+                _buildCategorySection(),
+                _buildDivider(),
                 _buildTodaySection(),
                 _buildDivider(),
                 _buildDueDateSection(),
@@ -142,15 +172,21 @@ class _DetailPanelState extends State<DetailPanel> {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              widget.task.title,
+            child: TextField(
+              controller: _titleController,
+              maxLines: 2,
+              minLines: 1,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: colors.textPrimary,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (_) => _notifyChanged(),
             ),
           ),
           IconButton(
@@ -159,6 +195,59 @@ class _DetailPanelState extends State<DetailPanel> {
             color: colors.textMuted,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 섹션 0: 소속 카테고리
+  Widget _buildCategorySection() {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Icon(Icons.label_outline, size: 16, color: colors.textSecondary),
+          const SizedBox(width: 8),
+          Text('카테고리',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary)),
+          const Spacer(),
+          DropdownButton<String?>(
+            value: _categoryId,
+            underline: const SizedBox.shrink(),
+            hint: const Text('카테고리 없음', style: TextStyle(fontSize: 13)),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('카테고리 없음', style: TextStyle(fontSize: 13)),
+              ),
+              ...widget.customCategories.map((cat) => DropdownMenuItem<String?>(
+                    value: cat.id,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: cat.color,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(cat.name, style: const TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  )),
+            ],
+            onChanged: (v) {
+              setState(() => _categoryId = v);
+              _notifyChanged();
+            },
           ),
         ],
       ),
@@ -227,6 +316,7 @@ class _DetailPanelState extends State<DetailPanel> {
                   value: _dueDate != null || _startDate != null,
                   onChanged: (v) {
                     setState(() {
+                      _dateError = null;
                       if (!v) {
                         _startDate = null;
                         _dueDate = null;
@@ -252,7 +342,10 @@ class _DetailPanelState extends State<DetailPanel> {
                 _ModeChip(
                   label: '단일 마감일',
                   selected: !_isRange,
-                  onTap: () => setState(() => _isRange = false),
+                  onTap: () => setState(() {
+                    _isRange = false;
+                    _dateError = null;
+                  }),
                 ),
                 _ModeChip(
                   label: '기간',
@@ -260,6 +353,7 @@ class _DetailPanelState extends State<DetailPanel> {
                   onTap: () => setState(() {
                     _isRange = true;
                     _startDate ??= DateTime.now();
+                    _dateError = null;
                   }),
                 ),
               ],
@@ -276,6 +370,25 @@ class _DetailPanelState extends State<DetailPanel> {
               date: _dueDate,
               onTap: () => _pickDate(false),
             ),
+            if (_dateError != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 14, color: Color(0xFFC42B1C)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _dateError!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFC42B1C),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ],
       ),
