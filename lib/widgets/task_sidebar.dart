@@ -11,6 +11,7 @@ class TaskSidebar extends StatelessWidget {
   final ValueChanged<Category> onAddCategory;
   final ValueChanged<Category> onEditCategoryColor;
   final ValueChanged<String> onDeleteCategory;
+  final ValueChanged<List<Category>> onReorderCategories;
   final bool isDarkMode;
   final VoidCallback onToggleDarkMode;
 
@@ -24,6 +25,7 @@ class TaskSidebar extends StatelessWidget {
     required this.onAddCategory,
     required this.onEditCategoryColor,
     required this.onDeleteCategory,
+    required this.onReorderCategories,
     required this.isDarkMode,
     required this.onToggleDarkMode,
   });
@@ -37,18 +39,39 @@ class TaskSidebar extends StatelessWidget {
         width: 220,
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                children: _buildCategoryItems(context, defaultCategories),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Divider(thickness: 1, height: 1),
+            ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(top: 8),
-                children: [
-                  ..._buildCategoryItems(context, defaultCategories),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Divider(thickness: 1, height: 1),
-                  ),
-                  ..._buildCategoryItems(context, customCategories,
-                      deletable: true),
-                ],
+              child: ReorderableListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: customCategories.length,
+                onReorderItem: (oldIndex, newIndex) {
+                  final reordered = List<Category>.from(customCategories);
+                  final moved = reordered.removeAt(oldIndex);
+                  reordered.insert(newIndex, moved);
+                  onReorderCategories(reordered);
+                },
+                itemBuilder: (context, index) {
+                  final cat = customCategories[index];
+                  return _CategoryItem(
+                    key: ValueKey(cat.id),
+                    category: cat,
+                    isSelected: cat.id == selectedCategoryId && !isCalendarView,
+                    onTap: () => onCategorySelected(cat.id),
+                    onEditColor: () =>
+                        _showEditColorDialog(context, cat, onEditCategoryColor),
+                    onDelete: () =>
+                        _showDeleteCategoryConfirm(context, cat, onDeleteCategory),
+                  );
+                },
               ),
             ),
             _buildBottomButtons(context),
@@ -60,22 +83,14 @@ class TaskSidebar extends StatelessWidget {
 
   List<Widget> _buildCategoryItems(
     BuildContext context,
-    List<Category> categories, {
-    bool deletable = false,
-  }) {
+    List<Category> categories,
+  ) {
     return categories
         .map((cat) => _CategoryItem(
+              key: ValueKey(cat.id),
               category: cat,
               isSelected: cat.id == selectedCategoryId && !isCalendarView,
               onTap: () => onCategorySelected(cat.id),
-              onEditColor: deletable
-                  ? () =>
-                      _showEditColorDialog(context, cat, onEditCategoryColor)
-                  : null,
-              onDelete: deletable
-                  ? () => _showDeleteCategoryConfirm(
-                      context, cat, onDeleteCategory)
-                  : null,
             ))
         .toList();
   }
@@ -101,7 +116,8 @@ class TaskSidebar extends StatelessWidget {
         _SidebarButton(
           icon: Icons.add,
           label: '새 카테고리',
-          onTap: () => _showAddCategoryDialog(context, onAddCategory),
+          onTap: () => _showAddCategoryDialog(
+              context, customCategories.length, onAddCategory),
         ),
         const SizedBox(height: 8),
       ],
@@ -129,6 +145,7 @@ Widget _colorSwatch(Color color, bool selected, VoidCallback onTap) {
 
 Future<void> _showAddCategoryDialog(
   BuildContext context,
+  int order,
   ValueChanged<Category> onAdd,
 ) async {
   final controller = TextEditingController();
@@ -175,6 +192,7 @@ Future<void> _showAddCategoryDialog(
                 name: controller.text.trim(),
                 type: CategoryType.custom,
                 color: selectedColor,
+                order: order,
               ),
             ),
             child: const Text('만들기'),
@@ -222,6 +240,7 @@ Future<void> _showEditColorDialog(
       name: category.name,
       type: category.type,
       color: picked,
+      order: category.order,
     ));
   }
 }
@@ -261,6 +280,7 @@ class _CategoryItem extends StatelessWidget {
   final VoidCallback? onDelete;
 
   const _CategoryItem({
+    super.key,
     required this.category,
     required this.isSelected,
     required this.onTap,

@@ -67,9 +67,8 @@ class FirestoreService {
 
   // ── 카테고리 CRUD ─────────────────────────────────────────────
 
-  Future<void> addCategory(Category category, {int order = 999}) async {
-    final data = category.toMap()..['order'] = order;
-    await _categories.doc(category.id).set(data);
+  Future<void> addCategory(Category category) async {
+    await _categories.doc(category.id).set(category.toMap());
   }
 
   Future<void> updateCategory(Category category) async {
@@ -90,8 +89,8 @@ class FirestoreService {
     if (existing.docs.isNotEmpty) return; // 이미 데이터 있음
 
     // 카테고리 시드
-    for (int i = 0; i < categories.length; i++) {
-      await addCategory(categories[i], order: i);
+    for (final category in categories) {
+      await addCategory(category);
     }
     // 할 일 시드
     for (final task in tasks) {

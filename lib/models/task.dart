@@ -15,6 +15,7 @@ class Task {
   bool reminderEnabled;
   String memo;
   bool nextGenerated;
+  int order;
 
   Task({
     required this.id,
@@ -29,6 +30,7 @@ class Task {
     this.reminderEnabled = false,
     this.memo = '',
     this.nextGenerated = false,
+    this.order = 0,
   });
 
   Map<String, dynamic> toMap() => {
@@ -45,6 +47,7 @@ class Task {
         'reminderEnabled': reminderEnabled,
         'memo': memo,
         'nextGenerated': nextGenerated,
+        'order': order,
       };
 
   // 반복 설정에 따라 다음 회차 할 일을 만들어 반환. 반복 없음이거나
@@ -68,7 +71,10 @@ class Task {
       id: newId,
       title: title,
       categoryId: categoryId,
-      isToday: false,
+      // isToday를 유지 — '오늘 할일'로 표시해둔 반복 일정은 다음 회차도
+      // 계속 '오늘 할일'에 나타나야 함(false로 고정하면 완료 즉시 그 뷰에서
+      // 사라져 "반복이 생성 안 된 것"처럼 보임).
+      isToday: isToday,
       startDate: startDate != null ? advance(startDate!) : null,
       dueDate: advance(dueDate!),
       repeatType: repeatType,
@@ -94,5 +100,6 @@ class Task {
         reminderEnabled: data['reminderEnabled'] as bool? ?? false,
         memo: data['memo'] as String? ?? '',
         nextGenerated: data['nextGenerated'] as bool? ?? false,
+        order: data['order'] as int? ?? 0,
       );
 }

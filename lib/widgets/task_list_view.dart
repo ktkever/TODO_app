@@ -9,6 +9,7 @@ class TaskListView extends StatelessWidget {
   final ValueChanged<Task> onTaskSelected;
   final ValueChanged<String> onAddTask;
   final ValueChanged<String> onTaskDeleted;
+  final ValueChanged<List<Task>> onTasksReordered;
   final bool hideCompleted;
   final VoidCallback onToggleHideCompleted;
   final String? selectedTaskId;
@@ -21,6 +22,7 @@ class TaskListView extends StatelessWidget {
     required this.onTaskSelected,
     required this.onAddTask,
     required this.onTaskDeleted,
+    required this.onTasksReordered,
     required this.hideCompleted,
     required this.onToggleHideCompleted,
     this.selectedTaskId,
@@ -66,12 +68,21 @@ class TaskListView extends StatelessWidget {
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                 )
-              : ListView.builder(
+              : ReorderableListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: tasks.length,
+                  buildDefaultDragHandles: false,
+                  onReorderItem: (oldIndex, newIndex) {
+                    final reordered = List<Task>.from(tasks);
+                    final moved = reordered.removeAt(oldIndex);
+                    reordered.insert(newIndex, moved);
+                    onTasksReordered(reordered);
+                  },
                   itemBuilder: (context, index) {
                     final task = tasks[index];
                     return _TaskItem(
+                      key: ValueKey(task.id),
+                      index: index,
                       task: task,
                       isSelected: task.id == selectedTaskId,
                       onToggle: () => onTaskToggled(task.id),
@@ -129,10 +140,7 @@ class _AddTaskRowState extends State<_AddTaskRow> {
               onSubmitted: (_) => _submit(),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.add, size: 20),
-            onPressed: _submit,
-          ),
+          IconButton(icon: const Icon(Icons.add, size: 20), onPressed: _submit),
         ],
       ),
     );
@@ -140,6 +148,7 @@ class _AddTaskRowState extends State<_AddTaskRow> {
 }
 
 class _TaskItem extends StatelessWidget {
+  final int index;
   final Task task;
   final bool isSelected;
   final VoidCallback onToggle;
@@ -147,6 +156,8 @@ class _TaskItem extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _TaskItem({
+    super.key,
+    required this.index,
     required this.task,
     required this.isSelected,
     required this.onToggle,
@@ -157,62 +168,65 @@ class _TaskItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    return Material(
-      color: isSelected ? colors.itemSelectedBg : Colors.transparent,
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        onTap: onTap,
+    return ReorderableDragStartListener(
+      index: index,
+      child: Material(
+        color: isSelected ? colors.itemSelectedBg : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: onToggle,
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: onToggle,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: task.isCompleted
+                            ? AppColors.accent
+                            : colors.textMuted,
+                        width: 2,
+                      ),
                       color: task.isCompleted
                           ? AppColors.accent
-                          : colors.textMuted,
-                      width: 2,
+                          : Colors.transparent,
                     ),
-                    color: task.isCompleted
-                        ? AppColors.accent
-                        : Colors.transparent,
+                    child: task.isCompleted
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : null,
                   ),
-                  child: task.isCompleted
-                      ? const Icon(Icons.check, size: 14, color: Colors.white)
-                      : null,
                 ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: task.isCompleted
-                          ? colors.textMuted
-                          : colors.textPrimary,
-                      decoration: task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      task.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: task.isCompleted
+                            ? colors.textMuted
+                            : colors.textPrimary,
+                        decoration: task.isCompleted
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 16),
-                color: colors.textMuted,
-                onPressed: onDelete,
-              ),
-            ],
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  color: colors.textMuted,
+                  onPressed: onDelete,
+                ),
+              ],
+            ),
           ),
         ),
       ),

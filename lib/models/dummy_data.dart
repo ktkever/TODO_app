@@ -8,18 +8,21 @@ final List<Category> dummyCustomCategories = const [
     name: 'Work Project',
     type: CategoryType.custom,
     color: Color(0xFF0078D4),
+    order: 0,
   ),
   Category(
     id: 'personal',
     name: 'Personal Errands',
     type: CategoryType.custom,
     color: Color(0xFF107C10),
+    order: 1,
   ),
   Category(
     id: 'fitness',
     name: 'Fitness',
     type: CategoryType.custom,
     color: Color(0xFFCA5010),
+    order: 2,
   ),
 ];
 

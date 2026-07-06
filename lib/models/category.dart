@@ -21,12 +21,14 @@ class Category {
   final String name;
   final CategoryType type;
   final Color color;
+  final int order;
 
   const Category({
     required this.id,
     required this.name,
     required this.type,
     this.color = const Color(0xFF0078D4),
+    this.order = 0,
   });
 
   Map<String, dynamic> toMap() => {
@@ -34,6 +36,7 @@ class Category {
         'name': name,
         'type': type.name,
         'color': color.toARGB32(),
+        'order': order,
       };
 
   factory Category.fromMap(Map<String, dynamic> data) {
@@ -48,6 +51,7 @@ class Category {
       color: data['color'] != null
           ? Color(data['color'] as int)
           : _fallbackColorForId(id),
+      order: data['order'] as int? ?? 0,
     );
   }
 }

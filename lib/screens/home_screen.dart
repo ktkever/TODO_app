@@ -143,22 +143,61 @@ class _HomeScreenState extends State<HomeScreen> {
     final allCategories = [...defaultCategories, ..._customCategories];
     final selected =
         allCategories.firstWhere((c) => c.id == _selectedCategoryId);
+    final categoryId = selected.type == CategoryType.custom ? selected.id : null;
+
+    // 같은 카테고리 내 맨 뒤에 붙도록 order 계산 (드래그로 재정렬된
+    // 카테고리에 새 항목이 끼어들지 않게 함)
+    final siblingOrders =
+        _tasks.where((t) => t.categoryId == categoryId).map((t) => t.order);
+    final nextOrder = siblingOrders.isEmpty
+        ? 0
+        : siblingOrders.reduce((a, b) => a > b ? a : b) + 1;
+
     final task = Task(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
       isToday: selected.type == CategoryType.today,
-      categoryId: selected.type == CategoryType.custom ? selected.id : null,
+      categoryId: categoryId,
+      order: nextOrder,
     );
     setState(() => _tasks.add(task));
     if (widget.useFirebase) FirestoreService.instance.addTask(task);
   }
 
+  void _onTasksReordered(List<Task> reordered) {
+    setState(() {
+      for (int i = 0; i < reordered.length; i++) {
+        final t = reordered[i];
+        if (t.order != i) {
+          t.order = i;
+          if (widget.useFirebase) FirestoreService.instance.updateTask(t);
+        }
+      }
+    });
+  }
+
   void _onAddCategory(Category category) {
     setState(() => _customCategories.add(category));
-    if (widget.useFirebase) {
-      FirestoreService.instance
-          .addCategory(category, order: _customCategories.length - 1);
+    if (widget.useFirebase) FirestoreService.instance.addCategory(category);
+  }
+
+  void _onReorderCategories(List<Category> reordered) {
+    final updated = <Category>[];
+    for (int i = 0; i < reordered.length; i++) {
+      final cat = reordered[i];
+      final withOrder = Category(
+        id: cat.id,
+        name: cat.name,
+        type: cat.type,
+        color: cat.color,
+        order: i,
+      );
+      updated.add(withOrder);
+      if (widget.useFirebase && cat.order != i) {
+        FirestoreService.instance.updateCategory(withOrder);
+      }
     }
+    setState(() => _customCategories = updated);
   }
 
   void _onTaskDeleted(String taskId) {
@@ -207,10 +246,20 @@ class _HomeScreenState extends State<HomeScreen> {
     };
 
     // 완료된 항목은 목록 맨 아래로 (where는 원래 순서를 유지하므로 안정 정렬 효과)
-    final incomplete = base.where((t) => !t.isCompleted).toList();
+    final incomplete = _sortByOrder(base.where((t) => !t.isCompleted).toList());
     if (_hideCompleted) return incomplete;
-    final completed = base.where((t) => t.isCompleted).toList();
+    final completed = _sortByOrder(base.where((t) => t.isCompleted).toList());
     return [...incomplete, ...completed];
+  }
+
+  // task.order로 정렬하되, order가 같으면 원래 순서를 유지(안정 정렬).
+  List<Task> _sortByOrder(List<Task> list) {
+    final indexed = list.asMap().entries.toList();
+    indexed.sort((a, b) {
+      final byOrder = a.value.order.compareTo(b.value.order);
+      return byOrder != 0 ? byOrder : a.key.compareTo(b.key);
+    });
+    return indexed.map((e) => e.value).toList();
   }
 
   String get _selectedCategoryName {
@@ -243,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onTaskSelected: _onTaskSelected,
         onAddTask: _onAddTask,
         onTaskDeleted: _onTaskDeleted,
+        onTasksReordered: _onTasksReordered,
         selectedTaskId: _selectedTask?.id,
         hideCompleted: _hideCompleted,
         onToggleHideCompleted: _onToggleHideCompleted,
@@ -259,6 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onToggleHideCompleted: _onToggleHideCompleted,
       onAddTask: _onAddTask,
       onTaskDeleted: _onTaskDeleted,
+      onTasksReordered: _onTasksReordered,
       selectedTaskId: _selectedTask?.id,
     );
   }
@@ -303,6 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onAddCategory: _onAddCategory,
                   onEditCategoryColor: _onEditCategoryColor,
                   onDeleteCategory: _onDeleteCategory,
+                  onReorderCategories: _onReorderCategories,
                   isDarkMode: widget.isDarkMode,
                   onToggleDarkMode: widget.onToggleDarkMode,
                 ),

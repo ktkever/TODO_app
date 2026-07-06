@@ -321,6 +321,9 @@ class _DetailPanelState extends State<DetailPanel> {
                         _startDate = null;
                         _dueDate = null;
                         _isRange = false;
+                        // 기한 없이는 반복이 계산될 기준일이 없어 다음 회차가
+                        // 생성되지 않으므로, 기한을 끄면 반복도 함께 끈다.
+                        _repeatType = RepeatType.none;
                       } else {
                         _dueDate = DateTime.now();
                       }
@@ -422,7 +425,14 @@ class _DetailPanelState extends State<DetailPanel> {
                 label: _repeatLabel(type),
                 selected: _repeatType == type,
                 onTap: () {
-                  setState(() => _repeatType = type);
+                  setState(() {
+                    _repeatType = type;
+                    // 기한이 없으면 반복의 기준일이 없어 완료해도 다음 회차가
+                    // 생성되지 않으므로, 반복을 켜면 기한도 함께 켠다.
+                    if (type != RepeatType.none && _dueDate == null) {
+                      _dueDate = DateTime.now();
+                    }
+                  });
                   _notifyChanged();
                 },
               );
