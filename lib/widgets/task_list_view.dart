@@ -7,6 +7,7 @@ class TaskListView extends StatelessWidget {
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
   final ValueChanged<String> onAddTask;
+  final ValueChanged<String> onTaskDeleted;
   final String? selectedTaskId;
 
   const TaskListView({
@@ -16,6 +17,7 @@ class TaskListView extends StatelessWidget {
     required this.onTaskToggled,
     required this.onTaskSelected,
     required this.onAddTask,
+    required this.onTaskDeleted,
     this.selectedTaskId,
   });
 
@@ -54,6 +56,7 @@ class TaskListView extends StatelessWidget {
                       isSelected: task.id == selectedTaskId,
                       onToggle: () => onTaskToggled(task.id),
                       onTap: () => onTaskSelected(task),
+                      onDelete: () => onTaskDeleted(task.id),
                     );
                   },
                 ),
@@ -121,12 +124,14 @@ class _TaskItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onToggle;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const _TaskItem({
     required this.task,
     required this.isSelected,
     required this.onToggle,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
@@ -180,6 +185,11 @@ class _TaskItem extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.grey[400],
+                onPressed: onDelete,
               ),
             ],
           ),

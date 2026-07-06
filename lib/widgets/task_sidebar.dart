@@ -8,6 +8,7 @@ class TaskSidebar extends StatelessWidget {
   final ValueChanged<String> onCategorySelected;
   final VoidCallback onCalendarToggle;
   final ValueChanged<Category> onAddCategory;
+  final ValueChanged<String> onDeleteCategory;
 
   const TaskSidebar({
     super.key,
@@ -17,6 +18,7 @@ class TaskSidebar extends StatelessWidget {
     required this.onCategorySelected,
     required this.onCalendarToggle,
     required this.onAddCategory,
+    required this.onDeleteCategory,
   });
 
   @override
@@ -31,12 +33,13 @@ class TaskSidebar extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.only(top: 8),
                 children: [
-                  ..._buildCategoryItems(defaultCategories),
+                  ..._buildCategoryItems(context, defaultCategories),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Divider(thickness: 1, height: 1),
                   ),
-                  ..._buildCategoryItems(customCategories),
+                  ..._buildCategoryItems(context, customCategories,
+                      deletable: true),
                 ],
               ),
             ),
@@ -47,12 +50,20 @@ class TaskSidebar extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildCategoryItems(List<Category> categories) {
+  List<Widget> _buildCategoryItems(
+    BuildContext context,
+    List<Category> categories, {
+    bool deletable = false,
+  }) {
     return categories
         .map((cat) => _CategoryItem(
               category: cat,
               isSelected: cat.id == selectedCategoryId && !isCalendarView,
               onTap: () => onCategorySelected(cat.id),
+              onDelete: deletable
+                  ? () => _showDeleteCategoryConfirm(
+                      context, cat, onDeleteCategory)
+                  : null,
             ))
         .toList();
   }
@@ -118,15 +129,44 @@ Future<void> _showAddCategoryDialog(
   }
 }
 
+Future<void> _showDeleteCategoryConfirm(
+  BuildContext context,
+  Category category,
+  ValueChanged<String> onDelete,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('카테고리 삭제'),
+      content: Text(
+          "'${category.name}' 카테고리를 삭제할까요? 이 카테고리의 할 일은 '카테고리 없음'으로 이동합니다."),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('삭제'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) onDelete(category.id);
+}
+
 class _CategoryItem extends StatelessWidget {
   final Category category;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const _CategoryItem({
     required this.category,
     required this.isSelected,
     required this.onTap,
+    this.onDelete,
   });
 
   IconData _iconFor(CategoryType type) {
@@ -162,6 +202,13 @@ class _CategoryItem extends StatelessWidget {
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
+        trailing: onDelete == null
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.grey[400],
+                onPressed: onDelete,
+              ),
         onTap: onTap,
       ),
     );

@@ -132,6 +132,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onTaskDeleted(String taskId) {
+    setState(() {
+      _tasks.removeWhere((t) => t.id == taskId);
+      if (_selectedTask?.id == taskId) _selectedTask = null;
+    });
+    if (widget.useFirebase) FirestoreService.instance.deleteTask(taskId);
+  }
+
+  void _onDeleteCategory(String categoryId) {
+    setState(() {
+      _customCategories.removeWhere((c) => c.id == categoryId);
+      for (final task in _tasks.where((t) => t.categoryId == categoryId)) {
+        task.categoryId = null;
+        if (widget.useFirebase) FirestoreService.instance.updateTask(task);
+      }
+      if (_selectedCategoryId == categoryId) _selectedCategoryId = 'today';
+    });
+    if (widget.useFirebase) FirestoreService.instance.deleteCategory(categoryId);
+  }
+
   // ── 필터 ─────────────────────────────────────────────────────
 
   List<Task> get _filteredTasks {
@@ -178,6 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onTaskToggled: _onTaskToggled,
         onTaskSelected: _onTaskSelected,
         onAddTask: _onAddTask,
+        onTaskDeleted: _onTaskDeleted,
         selectedTaskId: _selectedTask?.id,
       );
     }
@@ -189,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTaskToggled: _onTaskToggled,
       onTaskSelected: _onTaskSelected,
       onAddTask: _onAddTask,
+      onTaskDeleted: _onTaskDeleted,
       selectedTaskId: _selectedTask?.id,
     );
   }
@@ -231,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onCategorySelected: _onCategorySelected,
                   onCalendarToggle: _onCalendarToggle,
                   onAddCategory: _onAddCategory,
+                  onDeleteCategory: _onDeleteCategory,
                 ),
                 const VerticalDivider(width: 1, thickness: 1),
                 Expanded(child: _buildMainContent()),

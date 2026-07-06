@@ -9,6 +9,7 @@ class GroupedTaskListView extends StatelessWidget {
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
   final ValueChanged<String> onAddTask;
+  final ValueChanged<String> onTaskDeleted;
   final String? selectedTaskId;
 
   const GroupedTaskListView({
@@ -19,6 +20,7 @@ class GroupedTaskListView extends StatelessWidget {
     required this.onTaskToggled,
     required this.onTaskSelected,
     required this.onAddTask,
+    required this.onTaskDeleted,
     this.selectedTaskId,
   });
 
@@ -60,6 +62,7 @@ class GroupedTaskListView extends StatelessWidget {
                       selectedTaskId: selectedTaskId,
                       onTaskToggled: onTaskToggled,
                       onTaskSelected: onTaskSelected,
+                      onTaskDeleted: onTaskDeleted,
                     );
                   },
                 ),
@@ -160,6 +163,7 @@ class _TaskGroup extends StatelessWidget {
   final String? selectedTaskId;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
+  final ValueChanged<String> onTaskDeleted;
 
   const _TaskGroup({
     required this.category,
@@ -167,6 +171,7 @@ class _TaskGroup extends StatelessWidget {
     required this.selectedTaskId,
     required this.onTaskToggled,
     required this.onTaskSelected,
+    required this.onTaskDeleted,
   });
 
   @override
@@ -206,6 +211,7 @@ class _TaskGroup extends StatelessWidget {
               isSelected: task.id == selectedTaskId,
               onToggle: () => onTaskToggled(task.id),
               onTap: () => onTaskSelected(task),
+              onDelete: () => onTaskDeleted(task.id),
             )),
         const SizedBox(height: 4),
       ],
@@ -218,12 +224,14 @@ class _TaskItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onToggle;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const _TaskItem({
     required this.task,
     required this.isSelected,
     required this.onToggle,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
@@ -277,6 +285,11 @@ class _TaskItem extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.grey[400],
+                onPressed: onDelete,
               ),
             ],
           ),
