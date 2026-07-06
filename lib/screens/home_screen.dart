@@ -147,6 +147,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.useFirebase) FirestoreService.instance.deleteTask(taskId);
   }
 
+  void _onEditCategoryColor(Category updated) {
+    setState(() {
+      final idx = _customCategories.indexWhere((c) => c.id == updated.id);
+      if (idx != -1) _customCategories[idx] = updated;
+    });
+    if (widget.useFirebase) FirestoreService.instance.updateCategory(updated);
+  }
+
   void _onDeleteCategory(String categoryId) {
     setState(() {
       _customCategories.removeWhere((c) => c.id == categoryId);
@@ -192,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isCalendarView) {
       return CalendarScreen(
         tasks: _tasks,
+        customCategories: _customCategories,
         onTaskSelected: _onTaskSelected,
         selectedTaskId: _selectedTask?.id,
       );
@@ -260,6 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onCategorySelected: _onCategorySelected,
                   onCalendarToggle: _onCalendarToggle,
                   onAddCategory: _onAddCategory,
+                  onEditCategoryColor: _onEditCategoryColor,
                   onDeleteCategory: _onDeleteCategory,
                   isDarkMode: widget.isDarkMode,
                   onToggleDarkMode: widget.onToggleDarkMode,

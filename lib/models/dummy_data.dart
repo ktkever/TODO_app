@@ -1,10 +1,26 @@
+import 'package:flutter/material.dart';
 import 'category.dart';
 import 'task.dart';
 
 final List<Category> dummyCustomCategories = const [
-  Category(id: 'work', name: 'Work Project', type: CategoryType.custom),
-  Category(id: 'personal', name: 'Personal Errands', type: CategoryType.custom),
-  Category(id: 'fitness', name: 'Fitness', type: CategoryType.custom),
+  Category(
+    id: 'work',
+    name: 'Work Project',
+    type: CategoryType.custom,
+    color: Color(0xFF0078D4),
+  ),
+  Category(
+    id: 'personal',
+    name: 'Personal Errands',
+    type: CategoryType.custom,
+    color: Color(0xFF107C10),
+  ),
+  Category(
+    id: 'fitness',
+    name: 'Fitness',
+    type: CategoryType.custom,
+    color: Color(0xFFCA5010),
+  ),
 ];
 
 List<Task> buildDummyTasks() {

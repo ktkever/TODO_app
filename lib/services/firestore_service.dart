@@ -72,6 +72,10 @@ class FirestoreService {
     await _categories.doc(category.id).set(data);
   }
 
+  Future<void> updateCategory(Category category) async {
+    await _categories.doc(category.id).update(category.toMap());
+  }
+
   Future<void> deleteCategory(String categoryId) async {
     await _categories.doc(categoryId).delete();
   }

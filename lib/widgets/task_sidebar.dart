@@ -9,6 +9,7 @@ class TaskSidebar extends StatelessWidget {
   final ValueChanged<String> onCategorySelected;
   final VoidCallback onCalendarToggle;
   final ValueChanged<Category> onAddCategory;
+  final ValueChanged<Category> onEditCategoryColor;
   final ValueChanged<String> onDeleteCategory;
   final bool isDarkMode;
   final VoidCallback onToggleDarkMode;
@@ -21,6 +22,7 @@ class TaskSidebar extends StatelessWidget {
     required this.onCategorySelected,
     required this.onCalendarToggle,
     required this.onAddCategory,
+    required this.onEditCategoryColor,
     required this.onDeleteCategory,
     required this.isDarkMode,
     required this.onToggleDarkMode,
@@ -66,6 +68,10 @@ class TaskSidebar extends StatelessWidget {
               category: cat,
               isSelected: cat.id == selectedCategoryId && !isCalendarView,
               onTap: () => onCategorySelected(cat.id),
+              onEditColor: deletable
+                  ? () =>
+                      _showEditColorDialog(context, cat, onEditCategoryColor)
+                  : null,
               onDelete: deletable
                   ? () => _showDeleteCategoryConfirm(
                       context, cat, onDeleteCategory)
@@ -103,40 +109,119 @@ class TaskSidebar extends StatelessWidget {
   }
 }
 
+Widget _colorSwatch(Color color, bool selected, VoidCallback onTap) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(
+          color: selected ? Colors.black : Colors.transparent,
+          width: 2,
+        ),
+      ),
+    ),
+  );
+}
+
 Future<void> _showAddCategoryDialog(
   BuildContext context,
   ValueChanged<Category> onAdd,
 ) async {
   final controller = TextEditingController();
-  final name = await showDialog<String>(
+  Color selectedColor = categoryColorPalette.first;
+
+  final result = await showDialog<Category>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
+        title: const Text('새 카테고리'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: '카테고리 이름'),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categoryColorPalette
+                  .map((c) => _colorSwatch(
+                        c,
+                        c.toARGB32() == selectedColor.toARGB32(),
+                        () => setDialogState(() => selectedColor = c),
+                      ))
+                  .toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(
+              ctx,
+              Category(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                name: controller.text.trim(),
+                type: CategoryType.custom,
+                color: selectedColor,
+              ),
+            ),
+            child: const Text('만들기'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (result != null && result.name.isNotEmpty) onAdd(result);
+}
+
+Future<void> _showEditColorDialog(
+  BuildContext context,
+  Category category,
+  ValueChanged<Category> onEdit,
+) async {
+  final picked = await showDialog<Color>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('새 카테고리'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        decoration: const InputDecoration(hintText: '카테고리 이름'),
-        onSubmitted: (value) => Navigator.pop(ctx, value),
+      title: Text("'${category.name}' 색상"),
+      content: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: categoryColorPalette
+            .map((c) => _colorSwatch(
+                  c,
+                  c.toARGB32() == category.color.toARGB32(),
+                  () => Navigator.pop(ctx, c),
+                ))
+            .toList(),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('취소'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, controller.text),
-          child: const Text('만들기'),
+          child: const Text('닫기'),
         ),
       ],
     ),
   );
 
-  final trimmed = name?.trim();
-  if (trimmed != null && trimmed.isNotEmpty) {
-    onAdd(Category(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: trimmed,
-      type: CategoryType.custom,
+  if (picked != null) {
+    onEdit(Category(
+      id: category.id,
+      name: category.name,
+      type: category.type,
+      color: picked,
     ));
   }
 }
@@ -172,12 +257,14 @@ class _CategoryItem extends StatelessWidget {
   final Category category;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onEditColor;
   final VoidCallback? onDelete;
 
   const _CategoryItem({
     required this.category,
     required this.isSelected,
     required this.onTap,
+    this.onEditColor,
     this.onDelete,
   });
 
@@ -202,11 +289,23 @@ class _CategoryItem extends StatelessWidget {
         selectedTileColor: colors.selectedBg,
         selectedColor: AppColors.accent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        leading: Icon(
-          _iconFor(category.type),
-          size: 20,
-          color: isSelected ? AppColors.accent : colors.textSecondary,
-        ),
+        leading: onEditColor == null
+            ? Icon(
+                _iconFor(category.type),
+                size: 20,
+                color: isSelected ? AppColors.accent : colors.textSecondary,
+              )
+            : GestureDetector(
+                onTap: onEditColor,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: category.color,
+                  ),
+                ),
+              ),
         title: Text(
           category.name,
           style: TextStyle(

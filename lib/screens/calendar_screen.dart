@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import '../models/category.dart';
 import '../models/task.dart';
 import '../theme/app_colors.dart';
 
 class CalendarScreen extends StatefulWidget {
   final List<Task> tasks;
+  final List<Category> customCategories;
   final ValueChanged<Task> onTaskSelected;
   final String? selectedTaskId;
 
   const CalendarScreen({
     super.key,
     required this.tasks,
+    required this.customCategories,
     required this.onTaskSelected,
     this.selectedTaskId,
   });
@@ -58,13 +61,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     ];
   }
 
-  // 카테고리별 색상
-  Color _colorFor(String? categoryId) => switch (categoryId) {
-        'work' => const Color(0xFF0078D4),
-        'personal' => const Color(0xFF107C10),
-        'fitness' => const Color(0xFFCA5010),
-        _ => Colors.grey,
-      };
+  // 카테고리별 색상 — 사용자가 카테고리 생성/편집 시 지정한 색상을 그대로 사용
+  Color _colorFor(String? categoryId) {
+    if (categoryId == null) return Colors.grey;
+    for (final cat in widget.customCategories) {
+      if (cat.id == categoryId) return cat.color;
+    }
+    return Colors.grey;
+  }
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
