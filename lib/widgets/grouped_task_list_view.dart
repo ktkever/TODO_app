@@ -8,6 +8,7 @@ class GroupedTaskListView extends StatelessWidget {
   final String categoryName;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
+  final ValueChanged<String> onAddTask;
   final String? selectedTaskId;
 
   const GroupedTaskListView({
@@ -17,6 +18,7 @@ class GroupedTaskListView extends StatelessWidget {
     required this.categoryName,
     required this.onTaskToggled,
     required this.onTaskSelected,
+    required this.onAddTask,
     this.selectedTaskId,
   });
 
@@ -38,6 +40,7 @@ class GroupedTaskListView extends StatelessWidget {
             ),
           ),
         ),
+        _AddTaskRow(onSubmit: onAddTask),
         Expanded(
           child: tasks.isEmpty
               ? const Center(
@@ -96,6 +99,59 @@ class _GroupData {
   final Category category;
   final List<Task> tasks;
   const _GroupData({required this.category, required this.tasks});
+}
+
+class _AddTaskRow extends StatefulWidget {
+  final ValueChanged<String> onSubmit;
+
+  const _AddTaskRow({required this.onSubmit});
+
+  @override
+  State<_AddTaskRow> createState() => _AddTaskRowState();
+}
+
+class _AddTaskRowState extends State<_AddTaskRow> {
+  final _controller = TextEditingController();
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSubmit(text);
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          const SizedBox(width: 34),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                hintText: '할 일 추가',
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add, size: 20),
+            onPressed: _submit,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TaskGroup extends StatelessWidget {

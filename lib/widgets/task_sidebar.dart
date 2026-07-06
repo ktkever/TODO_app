@@ -7,6 +7,7 @@ class TaskSidebar extends StatelessWidget {
   final bool isCalendarView;
   final ValueChanged<String> onCategorySelected;
   final VoidCallback onCalendarToggle;
+  final ValueChanged<Category> onAddCategory;
 
   const TaskSidebar({
     super.key,
@@ -15,6 +16,7 @@ class TaskSidebar extends StatelessWidget {
     required this.isCalendarView,
     required this.onCategorySelected,
     required this.onCalendarToggle,
+    required this.onAddCategory,
   });
 
   @override
@@ -38,7 +40,7 @@ class TaskSidebar extends StatelessWidget {
                 ],
               ),
             ),
-            _buildBottomButtons(),
+            _buildBottomButtons(context),
           ],
         ),
       ),
@@ -55,7 +57,7 @@ class TaskSidebar extends StatelessWidget {
         .toList();
   }
 
-  Widget _buildBottomButtons() {
+  Widget _buildBottomButtons(BuildContext context) {
     return Column(
       children: [
         const Divider(thickness: 1, height: 1),
@@ -70,11 +72,49 @@ class TaskSidebar extends StatelessWidget {
         _SidebarButton(
           icon: Icons.add,
           label: '새 카테고리',
-          onTap: () {},
+          onTap: () => _showAddCategoryDialog(context, onAddCategory),
         ),
         const SizedBox(height: 8),
       ],
     );
+  }
+}
+
+Future<void> _showAddCategoryDialog(
+  BuildContext context,
+  ValueChanged<Category> onAdd,
+) async {
+  final controller = TextEditingController();
+  final name = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('새 카테고리'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: '카테고리 이름'),
+        onSubmitted: (value) => Navigator.pop(ctx, value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, controller.text),
+          child: const Text('만들기'),
+        ),
+      ],
+    ),
+  );
+
+  final trimmed = name?.trim();
+  if (trimmed != null && trimmed.isNotEmpty) {
+    onAdd(Category(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: trimmed,
+      type: CategoryType.custom,
+    ));
   }
 }
 

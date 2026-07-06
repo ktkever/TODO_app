@@ -110,6 +110,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.useFirebase) FirestoreService.instance.updateTask(updated);
   }
 
+  void _onAddTask(String title) {
+    final allCategories = [...defaultCategories, ..._customCategories];
+    final selected =
+        allCategories.firstWhere((c) => c.id == _selectedCategoryId);
+    final task = Task(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: title,
+      isToday: selected.type == CategoryType.today,
+      categoryId: selected.type == CategoryType.custom ? selected.id : null,
+    );
+    setState(() => _tasks.add(task));
+    if (widget.useFirebase) FirestoreService.instance.addTask(task);
+  }
+
+  void _onAddCategory(Category category) {
+    setState(() => _customCategories.add(category));
+    if (widget.useFirebase) {
+      FirestoreService.instance
+          .addCategory(category, order: _customCategories.length - 1);
+    }
+  }
+
   // ── 필터 ─────────────────────────────────────────────────────
 
   List<Task> get _filteredTasks {
@@ -155,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
         categoryName: _selectedCategoryName,
         onTaskToggled: _onTaskToggled,
         onTaskSelected: _onTaskSelected,
+        onAddTask: _onAddTask,
         selectedTaskId: _selectedTask?.id,
       );
     }
@@ -165,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
       categoryName: _selectedCategoryName,
       onTaskToggled: _onTaskToggled,
       onTaskSelected: _onTaskSelected,
+      onAddTask: _onAddTask,
       selectedTaskId: _selectedTask?.id,
     );
   }
@@ -206,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   isCalendarView: _isCalendarView,
                   onCategorySelected: _onCategorySelected,
                   onCalendarToggle: _onCalendarToggle,
+                  onAddCategory: _onAddCategory,
                 ),
                 const VerticalDivider(width: 1, thickness: 1),
                 Expanded(child: _buildMainContent()),
