@@ -29,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategoryId = 'today';
   bool _isCalendarView = false;
+  bool _hideCompleted = false;
   List<Task> _tasks = [];
   List<Category> _customCategories = [];
   Task? _selectedTask;
@@ -94,11 +95,32 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _onToggleHideCompleted() {
+    setState(() => _hideCompleted = !_hideCompleted);
+  }
+
   void _onTaskToggled(String taskId) {
     setState(() {
       final task = _tasks.firstWhere((t) => t.id == taskId);
-      task.isCompleted = !task.isCompleted;
+      final completingNow = !task.isCompleted;
+      task.isCompleted = completingNow;
+
+      // 체크 해제 후 재체크를 반복해도 같은 회차에서 다음 일정이
+      // 중복 생성되지 않도록 nextGenerated로 1회만 생성되게 막는다.
+      Task? next;
+      if (completingNow) {
+        next = task.nextOccurrence(
+          DateTime.now().microsecondsSinceEpoch.toString(),
+        );
+        if (next != null) task.nextGenerated = true;
+      }
+
       if (widget.useFirebase) FirestoreService.instance.updateTask(task);
+
+      if (next != null) {
+        _tasks.add(next);
+        if (widget.useFirebase) FirestoreService.instance.addTask(next);
+      }
     });
   }
 
@@ -174,15 +196,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final selected =
         allCategories.firstWhere((c) => c.id == _selectedCategoryId);
 
-    return switch (selected.type) {
+    final List<Task> base = switch (selected.type) {
       CategoryType.today => _tasks.where((t) => t.isToday).toList(),
       CategoryType.planned => _tasks.where((t) => t.dueDate != null).toList(),
       CategoryType.unplanned =>
         _tasks.where((t) => t.dueDate == null && t.startDate == null).toList(),
-      CategoryType.all => List.from(_tasks),
+      CategoryType.all => _tasks.toList(),
       CategoryType.custom =>
         _tasks.where((t) => t.categoryId == selected.id).toList(),
     };
+
+    // 완료된 항목은 목록 맨 아래로 (where는 원래 순서를 유지하므로 안정 정렬 효과)
+    final incomplete = base.where((t) => !t.isCompleted).toList();
+    if (_hideCompleted) return incomplete;
+    final completed = base.where((t) => t.isCompleted).toList();
+    return [...incomplete, ...completed];
   }
 
   String get _selectedCategoryName {
@@ -216,6 +244,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onAddTask: _onAddTask,
         onTaskDeleted: _onTaskDeleted,
         selectedTaskId: _selectedTask?.id,
+        hideCompleted: _hideCompleted,
+        onToggleHideCompleted: _onToggleHideCompleted,
       );
     }
 
@@ -225,6 +255,8 @@ class _HomeScreenState extends State<HomeScreen> {
       categoryName: _selectedCategoryName,
       onTaskToggled: _onTaskToggled,
       onTaskSelected: _onTaskSelected,
+      hideCompleted: _hideCompleted,
+      onToggleHideCompleted: _onToggleHideCompleted,
       onAddTask: _onAddTask,
       onTaskDeleted: _onTaskDeleted,
       selectedTaskId: _selectedTask?.id,

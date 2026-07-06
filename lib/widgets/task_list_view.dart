@@ -9,6 +9,8 @@ class TaskListView extends StatelessWidget {
   final ValueChanged<Task> onTaskSelected;
   final ValueChanged<String> onAddTask;
   final ValueChanged<String> onTaskDeleted;
+  final bool hideCompleted;
+  final VoidCallback onToggleHideCompleted;
   final String? selectedTaskId;
 
   const TaskListView({
@@ -19,6 +21,8 @@ class TaskListView extends StatelessWidget {
     required this.onTaskSelected,
     required this.onAddTask,
     required this.onTaskDeleted,
+    required this.hideCompleted,
+    required this.onToggleHideCompleted,
     this.selectedTaskId,
   });
 
@@ -29,13 +33,28 @@ class TaskListView extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-          child: Text(
-            categoryName,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0078D4),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  categoryName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0078D4),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  hideCompleted ? Icons.visibility_off : Icons.visibility,
+                  size: 18,
+                ),
+                tooltip: hideCompleted ? '완료 항목 표시' : '완료 항목 숨기기',
+                color: AppColors.of(context).textMuted,
+                onPressed: onToggleHideCompleted,
+              ),
+            ],
           ),
         ),
         _AddTaskRow(onSubmit: onAddTask),

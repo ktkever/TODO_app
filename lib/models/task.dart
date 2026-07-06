@@ -14,6 +14,7 @@ class Task {
   int repeatIntervalDays;
   bool reminderEnabled;
   String memo;
+  bool nextGenerated;
 
   Task({
     required this.id,
@@ -27,6 +28,7 @@ class Task {
     this.repeatIntervalDays = 1,
     this.reminderEnabled = false,
     this.memo = '',
+    this.nextGenerated = false,
   });
 
   Map<String, dynamic> toMap() => {
@@ -42,7 +44,39 @@ class Task {
         'repeatIntervalDays': repeatIntervalDays,
         'reminderEnabled': reminderEnabled,
         'memo': memo,
+        'nextGenerated': nextGenerated,
       };
+
+  // 반복 설정에 따라 다음 회차 할 일을 만들어 반환. 반복 없음이거나
+  // 기한이 없거나 이미 다음 회차를 생성한 적이 있으면(체크 해제 후 재체크로
+  // 중복 생성되는 것을 방지) null.
+  Task? nextOccurrence(String newId) {
+    if (repeatType == RepeatType.none || dueDate == null || nextGenerated) {
+      return null;
+    }
+
+    DateTime advance(DateTime d) => switch (repeatType) {
+          RepeatType.daily => d.add(const Duration(days: 1)),
+          RepeatType.weekly => d.add(const Duration(days: 7)),
+          RepeatType.monthly => DateTime(d.year, d.month + 1, d.day),
+          RepeatType.yearly => DateTime(d.year + 1, d.month, d.day),
+          RepeatType.custom => d.add(Duration(days: repeatIntervalDays)),
+          RepeatType.none => d,
+        };
+
+    return Task(
+      id: newId,
+      title: title,
+      categoryId: categoryId,
+      isToday: false,
+      startDate: startDate != null ? advance(startDate!) : null,
+      dueDate: advance(dueDate!),
+      repeatType: repeatType,
+      repeatIntervalDays: repeatIntervalDays,
+      reminderEnabled: reminderEnabled,
+      memo: memo,
+    );
+  }
 
   factory Task.fromMap(Map<String, dynamic> data) => Task(
         id: data['id'] as String,
@@ -59,5 +93,6 @@ class Task {
         repeatIntervalDays: data['repeatIntervalDays'] as int? ?? 1,
         reminderEnabled: data['reminderEnabled'] as bool? ?? false,
         memo: data['memo'] as String? ?? '',
+        nextGenerated: data['nextGenerated'] as bool? ?? false,
       );
 }
