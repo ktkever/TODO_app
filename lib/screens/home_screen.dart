@@ -13,7 +13,14 @@ import '../widgets/task_sidebar.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool useFirebase;
-  const HomeScreen({super.key, this.useFirebase = false});
+  final bool isDarkMode;
+  final VoidCallback onToggleDarkMode;
+  const HomeScreen({
+    super.key,
+    this.useFirebase = false,
+    this.isDarkMode = false,
+    required this.onToggleDarkMode,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -254,6 +261,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onCalendarToggle: _onCalendarToggle,
                   onAddCategory: _onAddCategory,
                   onDeleteCategory: _onDeleteCategory,
+                  isDarkMode: widget.isDarkMode,
+                  onToggleDarkMode: widget.onToggleDarkMode,
                 ),
                 const VerticalDivider(width: 1, thickness: 1),
                 Expanded(child: _buildMainContent()),

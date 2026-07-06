@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../theme/app_colors.dart';
 
 class TaskListView extends StatelessWidget {
   final List<Task> tasks;
@@ -136,8 +137,9 @@ class _TaskItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Material(
-      color: isSelected ? const Color(0xFFEFF6FC) : Colors.transparent,
+      color: isSelected ? colors.itemSelectedBg : Colors.transparent,
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: onTap,
@@ -156,12 +158,12 @@ class _TaskItem extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: task.isCompleted
-                          ? const Color(0xFF0078D4)
-                          : Colors.grey[400]!,
+                          ? AppColors.accent
+                          : colors.textMuted,
                       width: 2,
                     ),
                     color: task.isCompleted
-                        ? const Color(0xFF0078D4)
+                        ? AppColors.accent
                         : Colors.transparent,
                   ),
                   child: task.isCompleted
@@ -177,8 +179,8 @@ class _TaskItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       color: task.isCompleted
-                          ? Colors.grey[400]
-                          : Colors.grey[800],
+                          ? colors.textMuted
+                          : colors.textPrimary,
                       decoration: task.isCompleted
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
@@ -188,7 +190,7 @@ class _TaskItem extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 16),
-                color: Colors.grey[400],
+                color: colors.textMuted,
                 onPressed: onDelete,
               ),
             ],

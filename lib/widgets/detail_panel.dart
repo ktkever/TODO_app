@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/task.dart';
+import '../theme/app_colors.dart';
 
 class DetailPanel extends StatefulWidget {
   final Task task;
@@ -99,10 +100,11 @@ class _DetailPanelState extends State<DetailPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(left: BorderSide(color: Color(0xFFE0E0E0))),
+      decoration: BoxDecoration(
+        color: colors.background,
+        border: Border(left: BorderSide(color: colors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,20 +133,21 @@ class _DetailPanelState extends State<DetailPanel> {
   }
 
   Widget _buildHeader() {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               widget.task.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+                color: colors.textPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -153,7 +156,7 @@ class _DetailPanelState extends State<DetailPanel> {
           IconButton(
             icon: const Icon(Icons.close, size: 18),
             onPressed: widget.onClose,
-            color: Colors.grey[600],
+            color: colors.textMuted,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
@@ -164,6 +167,7 @@ class _DetailPanelState extends State<DetailPanel> {
 
   // 섹션 1: 오늘 할일 추가
   Widget _buildTodaySection() {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: SizedBox(
@@ -176,20 +180,18 @@ class _DetailPanelState extends State<DetailPanel> {
           icon: Icon(
             _isToday ? Icons.wb_sunny : Icons.wb_sunny_outlined,
             size: 18,
-            color: _isToday ? const Color(0xFF0078D4) : Colors.grey[600],
+            color: _isToday ? AppColors.accent : colors.textMuted,
           ),
           label: Text(
             _isToday ? "'오늘 할일'에서 제거" : "'오늘 할일'에 추가",
             style: TextStyle(
               fontSize: 13,
-              color: _isToday ? const Color(0xFF0078D4) : Colors.grey[700],
+              color: _isToday ? AppColors.accent : colors.textSecondary,
             ),
           ),
           style: OutlinedButton.styleFrom(
             side: BorderSide(
-              color: _isToday
-                  ? const Color(0xFF0078D4)
-                  : Colors.grey[300]!,
+              color: _isToday ? AppColors.accent : colors.border,
             ),
             padding: const EdgeInsets.symmetric(vertical: 10),
             shape: RoundedRectangleBorder(
@@ -213,11 +215,11 @@ class _DetailPanelState extends State<DetailPanel> {
               const Icon(Icons.calendar_today_outlined,
                   size: 16, color: Color(0xFF0078D4)),
               const SizedBox(width: 8),
-              const Text('기한',
+              Text('기한',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333))),
+                      color: AppColors.of(context).textSecondary)),
               const Spacer(),
               Transform.scale(
                 scale: 0.75,
@@ -291,11 +293,11 @@ class _DetailPanelState extends State<DetailPanel> {
             children: [
               const Icon(Icons.repeat, size: 16, color: Color(0xFF0078D4)),
               const SizedBox(width: 8),
-              const Text('반복',
+              Text('반복',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333))),
+                      color: AppColors.of(context).textSecondary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -366,11 +368,11 @@ class _DetailPanelState extends State<DetailPanel> {
               const Icon(Icons.notifications_outlined,
                   size: 16, color: Color(0xFF0078D4)),
               const SizedBox(width: 8),
-              const Text('알림',
+              Text('알림',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333))),
+                      color: AppColors.of(context).textSecondary)),
               const Spacer(),
               Transform.scale(
                 scale: 0.75,
@@ -401,18 +403,19 @@ class _DetailPanelState extends State<DetailPanel> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: AppColors.of(context).border),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.access_time,
-                        size: 16, color: Colors.grey),
+                    Icon(Icons.access_time,
+                        size: 16, color: AppColors.of(context).textMuted),
                     const SizedBox(width: 8),
                     Text(
                       '알림 시간 설정 (UI 전용)',
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey[600]),
+                          fontSize: 12,
+                          color: AppColors.of(context).textMuted),
                     ),
                   ],
                 ),
@@ -435,11 +438,11 @@ class _DetailPanelState extends State<DetailPanel> {
             children: [
               const Icon(Icons.notes, size: 16, color: Color(0xFF0078D4)),
               const SizedBox(width: 8),
-              const Text('메모',
+              Text('메모',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333))),
+                      color: AppColors.of(context).textSecondary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -449,14 +452,15 @@ class _DetailPanelState extends State<DetailPanel> {
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               hintText: '메모를 입력하세요...',
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+              hintStyle: TextStyle(
+                  color: AppColors.of(context).textMuted, fontSize: 13),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey[300]!),
+                borderSide: BorderSide(color: AppColors.of(context).border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey[300]!),
+                borderSide: BorderSide(color: AppColors.of(context).border),
               ),
               contentPadding: const EdgeInsets.all(10),
             ),
@@ -468,7 +472,7 @@ class _DetailPanelState extends State<DetailPanel> {
   }
 
   Widget _buildDivider() =>
-      Divider(height: 1, thickness: 1, color: Colors.grey[100]);
+      Divider(height: 1, thickness: 1, color: AppColors.of(context).border);
 
   String _repeatLabel(RepeatType type) => switch (type) {
         RepeatType.none => '없음',
@@ -493,22 +497,23 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF0078D4) : Colors.grey[100],
+          color: selected ? AppColors.accent : colors.surfaceAlt,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? const Color(0xFF0078D4) : Colors.grey[300]!,
+            color: selected ? AppColors.accent : colors.border,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? Colors.white : Colors.grey[700],
+            color: selected ? Colors.white : colors.textSecondary,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -526,6 +531,7 @@ class _DateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
@@ -534,7 +540,7 @@ class _DateRow extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
@@ -542,7 +548,7 @@ class _DateRow extends StatelessWidget {
               Text(label,
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: colors.textMuted,
                       fontWeight: FontWeight.w500)),
               const SizedBox(width: 12),
               Flexible(
@@ -553,9 +559,7 @@ class _DateRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
-                    color: date != null
-                        ? const Color(0xFF1A1A1A)
-                        : Colors.grey[400],
+                    color: date != null ? colors.textPrimary : colors.textMuted,
                   ),
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
+import '../theme/app_colors.dart';
 
 class TaskSidebar extends StatelessWidget {
   final List<Category> customCategories;
@@ -9,6 +10,8 @@ class TaskSidebar extends StatelessWidget {
   final VoidCallback onCalendarToggle;
   final ValueChanged<Category> onAddCategory;
   final ValueChanged<String> onDeleteCategory;
+  final bool isDarkMode;
+  final VoidCallback onToggleDarkMode;
 
   const TaskSidebar({
     super.key,
@@ -19,12 +22,15 @@ class TaskSidebar extends StatelessWidget {
     required this.onCalendarToggle,
     required this.onAddCategory,
     required this.onDeleteCategory,
+    required this.isDarkMode,
+    required this.onToggleDarkMode,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Material(
-      color: const Color(0xFFF3F2F1),
+      color: colors.surface,
       child: SizedBox(
         width: 220,
         child: Column(
@@ -72,6 +78,12 @@ class TaskSidebar extends StatelessWidget {
     return Column(
       children: [
         const Divider(thickness: 1, height: 1),
+        _SidebarButton(
+          icon: isDarkMode ? Icons.dark_mode : Icons.dark_mode_outlined,
+          label: isDarkMode ? '다크 모드' : '라이트 모드',
+          isActive: isDarkMode,
+          onTap: onToggleDarkMode,
+        ),
         _SidebarButton(
           icon: isCalendarView
               ? Icons.calendar_month
@@ -181,24 +193,25 @@ class _CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
         dense: true,
         selected: isSelected,
-        selectedTileColor: const Color(0xFFDEECF9),
-        selectedColor: const Color(0xFF0078D4),
+        selectedTileColor: colors.selectedBg,
+        selectedColor: AppColors.accent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         leading: Icon(
           _iconFor(category.type),
           size: 20,
-          color: isSelected ? const Color(0xFF0078D4) : Colors.grey[700],
+          color: isSelected ? AppColors.accent : colors.textSecondary,
         ),
         title: Text(
           category.name,
           style: TextStyle(
             fontSize: 14,
-            color: isSelected ? const Color(0xFF0078D4) : Colors.grey[800],
+            color: isSelected ? AppColors.accent : colors.textPrimary,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -206,7 +219,7 @@ class _CategoryItem extends StatelessWidget {
             ? null
             : IconButton(
                 icon: const Icon(Icons.close, size: 16),
-                color: Colors.grey[400],
+                color: colors.textMuted,
                 onPressed: onDelete,
               ),
         onTap: onTap,
@@ -230,26 +243,25 @@ class _SidebarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        color: isActive
-            ? const Color(0xFFDEECF9)
-            : Colors.transparent,
+        color: isActive ? colors.selectedBg : Colors.transparent,
         child: Row(
           children: [
             Icon(
               icon,
               size: 20,
-              color: isActive ? const Color(0xFF0078D4) : Colors.grey[700],
+              color: isActive ? AppColors.accent : colors.textSecondary,
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
                 fontSize: 14,
-                color: isActive ? const Color(0xFF0078D4) : Colors.grey[700],
+                color: isActive ? AppColors.accent : colors.textSecondary,
                 fontWeight:
                     isActive ? FontWeight.w600 : FontWeight.normal,
               ),

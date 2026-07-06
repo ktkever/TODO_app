@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../theme/app_colors.dart';
 
 class CalendarScreen extends StatefulWidget {
   final List<Task> tasks;
@@ -110,12 +111,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: _prevMonth,
-            color: Colors.grey[700],
+            color: AppColors.of(context).textSecondary,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: _nextMonth,
-            color: Colors.grey[700],
+            color: AppColors.of(context).textSecondary,
           ),
           TextButton(
             onPressed: () => setState(() {
@@ -130,13 +131,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildWeekdayRow() {
+    final colors = AppColors.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
-          top: BorderSide(color: Colors.grey[200]!),
+          bottom: BorderSide(color: colors.border),
+          top: BorderSide(color: colors.border),
         ),
-        color: const Color(0xFFF9F9F9),
+        color: colors.surfaceAlt,
       ),
       child: Row(
         children: _weekdays.map((label) {
@@ -155,7 +157,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? Colors.red[400]
                       : isSat
                           ? Colors.blue[400]
-                          : Colors.grey[600],
+                          : colors.textMuted,
                 ),
               ),
             ),
@@ -167,6 +169,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildWeekRow(List<DateTime?> week, double cellWidth) {
     final today = DateTime.now();
+    final colors = AppColors.of(context);
 
     // 이 주에 표시할 일정 수집
     final barItems = _collectBarsForWeek(week, cellWidth);
@@ -190,8 +193,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      right: BorderSide(color: Colors.grey[200]!),
-                      bottom: BorderSide(color: Colors.grey[200]!),
+                      right: BorderSide(color: colors.border),
+                      bottom: BorderSide(color: colors.border),
                     ),
                   ),
                   child: day == null
@@ -223,12 +226,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: !isCurrentMonth
-                                          ? Colors.grey[300]
+                                          ? colors.textMuted
                                           : isSun
                                               ? Colors.red[400]
                                               : isSat
                                                   ? Colors.blue[400]
-                                                  : Colors.grey[700],
+                                                  : colors.textPrimary,
                                     ),
                                   ),
                           ),
