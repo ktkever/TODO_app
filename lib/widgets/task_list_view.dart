@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../models/category.dart';
 import '../models/task.dart';
 import '../theme/app_colors.dart';
 
 class TaskListView extends StatelessWidget {
   final List<Task> tasks;
-  final String categoryName;
+  final Category category;
+  final ValueChanged<Category> onRenameCategory;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
   final ValueChanged<String> onAddTask;
@@ -17,7 +19,8 @@ class TaskListView extends StatelessWidget {
   const TaskListView({
     super.key,
     required this.tasks,
-    required this.categoryName,
+    required this.category,
+    required this.onRenameCategory,
     required this.onTaskToggled,
     required this.onTaskSelected,
     required this.onAddTask,
@@ -38,13 +41,15 @@ class TaskListView extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  categoryName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0078D4),
-                  ),
+                child: _CategoryTitleField(
+                  initialName: category.name,
+                  onChanged: (text) => onRenameCategory(Category(
+                    id: category.id,
+                    name: text,
+                    type: category.type,
+                    color: category.color,
+                    order: category.order,
+                  )),
                 ),
               ),
               IconButton(
@@ -93,6 +98,47 @@ class TaskListView extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _CategoryTitleField extends StatefulWidget {
+  final String initialName;
+  final ValueChanged<String> onChanged;
+
+  const _CategoryTitleField({
+    required this.initialName,
+    required this.onChanged,
+  });
+
+  @override
+  State<_CategoryTitleField> createState() => _CategoryTitleFieldState();
+}
+
+class _CategoryTitleFieldState extends State<_CategoryTitleField> {
+  late final _controller = TextEditingController(text: widget.initialName);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF0078D4),
+      ),
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.zero,
+      ),
+      onChanged: widget.onChanged,
     );
   }
 }

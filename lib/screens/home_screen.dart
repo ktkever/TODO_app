@@ -216,6 +216,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.useFirebase) FirestoreService.instance.updateCategory(updated);
   }
 
+  void _onRenameCategory(Category updated) {
+    setState(() {
+      final idx = _customCategories.indexWhere((c) => c.id == updated.id);
+      if (idx != -1) _customCategories[idx] = updated;
+    });
+    if (widget.useFirebase) FirestoreService.instance.updateCategory(updated);
+  }
+
   void _onDeleteCategory(String categoryId) {
     setState(() {
       _customCategories.removeWhere((c) => c.id == categoryId);
@@ -283,11 +291,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final isCustom = _customCategories.any((c) => c.id == _selectedCategoryId);
-    if (isCustom) {
+    final matchingCategories =
+        _customCategories.where((c) => c.id == _selectedCategoryId);
+    final selectedCategory =
+        matchingCategories.isEmpty ? null : matchingCategories.first;
+    if (selectedCategory != null) {
       return TaskListView(
+        key: ValueKey(selectedCategory.id),
         tasks: _filteredTasks,
-        categoryName: _selectedCategoryName,
+        category: selectedCategory,
+        onRenameCategory: _onRenameCategory,
         onTaskToggled: _onTaskToggled,
         onTaskSelected: _onTaskSelected,
         onAddTask: _onAddTask,
