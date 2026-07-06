@@ -1,30 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' hide Category;
 import '../models/category.dart';
 import '../models/task.dart';
 
-// 단일 사용자 데스크톱 앱을 위한 Firestore CRUD 서비스.
-// 익명 인증으로 설치별 UID를 발급받아 users/{uid}/ 경로에 데이터를 저장.
+// 로그인한 계정별 Firestore CRUD 서비스.
+// users/{uid}/ 경로에 저장하며, uid는 로그인 성공 후 bindUser로 지정한다.
 class FirestoreService {
   FirestoreService._();
   static final FirestoreService instance = FirestoreService._();
 
-  bool _available = false;
   String? _uid;
 
-  bool get isAvailable => _available;
-
-  // Firebase 초기화 성공 시 호출
-  Future<void> init() async {
-    try {
-      final cred = await FirebaseAuth.instance.signInAnonymously();
-      _uid = cred.user?.uid;
-      _available = _uid != null;
-    } catch (e) {
-      debugPrint('FirestoreService.init 실패: $e');
-      _available = false;
-    }
+  // 로그인 성공 시 호출 — 이후 모든 CRUD가 이 uid 아래 경로를 사용한다.
+  void bindUser(String uid) {
+    _uid = uid;
   }
 
   CollectionReference<Map<String, dynamic>> get _tasks =>
@@ -77,24 +65,5 @@ class FirestoreService {
 
   Future<void> deleteCategory(String categoryId) async {
     await _categories.doc(categoryId).delete();
-  }
-
-  // ── 첫 실행 시 더미 데이터 시드 ───────────────────────────────
-
-  Future<void> seedIfEmpty(
-    List<Task> tasks,
-    List<Category> categories,
-  ) async {
-    final existing = await _tasks.limit(1).get();
-    if (existing.docs.isNotEmpty) return; // 이미 데이터 있음
-
-    // 카테고리 시드
-    for (final category in categories) {
-      await addCategory(category);
-    }
-    // 할 일 시드
-    for (final task in tasks) {
-      await addTask(task);
-    }
   }
 }

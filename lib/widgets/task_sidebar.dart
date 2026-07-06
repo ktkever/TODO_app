@@ -14,6 +14,8 @@ class TaskSidebar extends StatelessWidget {
   final ValueChanged<List<Category>> onReorderCategories;
   final bool isDarkMode;
   final VoidCallback onToggleDarkMode;
+  final VoidCallback? onLogout;
+  final VoidCallback onEnterWidgetMode;
 
   const TaskSidebar({
     super.key,
@@ -28,6 +30,8 @@ class TaskSidebar extends StatelessWidget {
     required this.onReorderCategories,
     required this.isDarkMode,
     required this.onToggleDarkMode,
+    required this.onEnterWidgetMode,
+    this.onLogout,
   });
 
   @override
@@ -114,11 +118,22 @@ class TaskSidebar extends StatelessWidget {
           onTap: onCalendarToggle,
         ),
         _SidebarButton(
+          icon: Icons.dashboard_customize_outlined,
+          label: '바탕화면 위젯',
+          onTap: onEnterWidgetMode,
+        ),
+        _SidebarButton(
           icon: Icons.add,
           label: '새 카테고리',
           onTap: () => _showAddCategoryDialog(
               context, customCategories.length, onAddCategory),
         ),
+        if (onLogout != null)
+          _SidebarButton(
+            icon: Icons.logout,
+            label: '로그아웃',
+            onTap: onLogout!,
+          ),
         const SizedBox(height: 8),
       ],
     );

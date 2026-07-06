@@ -1,25 +1,34 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_acrylic/flutter_acrylic.dart' as acrylic;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import '../models/category.dart';
 import '../models/dummy_data.dart';
 import '../models/task.dart';
 import '../screens/calendar_screen.dart';
 import '../services/firestore_service.dart';
+import '../widgets/desktop_widget_shell.dart';
 import '../widgets/detail_panel.dart';
 import '../widgets/grouped_task_list_view.dart';
 import '../widgets/task_list_view.dart';
 import '../widgets/task_sidebar.dart';
 
+const _widgetOpacityPrefKey = 'widgetOpacity';
+const _widgetBoundsPrefKey = 'widgetBounds'; // "x,y,w,h" 형식으로 저장
+
 class HomeScreen extends StatefulWidget {
   final bool useFirebase;
   final bool isDarkMode;
   final VoidCallback onToggleDarkMode;
+  final VoidCallback? onLogout;
   const HomeScreen({
     super.key,
     this.useFirebase = false,
     this.isDarkMode = false,
     required this.onToggleDarkMode,
+    this.onLogout,
   });
 
   @override
@@ -34,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Category> _customCategories = [];
   Task? _selectedTask;
   bool _loading = true;
+
+  bool _isWidgetMode = false;
+  double _widgetOpacity = 1.0;
+  Rect? _boundsBeforeWidgetMode;
 
   StreamSubscription<List<Task>>? _tasksSub;
   StreamSubscription<List<Category>>? _categoriesSub;
@@ -52,9 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initFirestore() async {
     final svc = FirestoreService.instance;
-
-    // 첫 실행이면 더미 데이터로 초기 시드
-    await svc.seedIfEmpty(buildDummyTasks(), List.from(dummyCustomCategories));
 
     // 실시간 스트림 구독
     _categoriesSub = svc.watchCategories().listen((cats) {
@@ -97,6 +107,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onToggleHideCompleted() {
     setState(() => _hideCompleted = !_hideCompleted);
+  }
+
+  // ── 바탕화면 위젯 모드 ────────────────────────────────────────
+
+  Future<void> _enterWidgetMode() async {
+    _boundsBeforeWidgetMode = await windowManager.getBounds();
+
+    final prefs = await SharedPreferences.getInstance();
+    final opacity = prefs.getDouble(_widgetOpacityPrefKey) ?? 1.0;
+    final savedBounds = prefs.getString(_widgetBoundsPrefKey);
+    final bounds = savedBounds != null
+        ? _parseBounds(savedBounds)
+        : const Rect.fromLTWH(100, 100, 380, 320);
+
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden,
+        windowButtonVisibility: false);
+    await windowManager.setAsFrameless();
+    await windowManager.setResizable(true);
+    await windowManager.setSkipTaskbar(true);
+    await windowManager.setAlwaysOnBottom(true);
+    // 창 전체를 균일하게 흐리는 setOpacity 대신, 창 자체를 픽셀 단위
+    // 투명(per-pixel alpha)으로 바꾸고 배경 레이어만 알파를 조절한다.
+    // (달력 격자/숫자/텍스트는 DesktopWidgetShell에서 별도로 항상 불투명하게 그림)
+    await acrylic.Window.setEffect(effect: acrylic.WindowEffect.transparent);
+    await windowManager.setBounds(bounds);
+
+    setState(() {
+      _isWidgetMode = true;
+      _isCalendarView = true;
+      _selectedTask = null;
+      _widgetOpacity = opacity;
+    });
+  }
+
+  Future<void> _exitWidgetMode() async {
+    final bounds = await windowManager.getBounds();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_widgetBoundsPrefKey, _boundsToString(bounds));
+    await prefs.setDouble(_widgetOpacityPrefKey, _widgetOpacity);
+
+    await windowManager.setAlwaysOnBottom(false);
+    await windowManager.setSkipTaskbar(false);
+    await acrylic.Window.setEffect(effect: acrylic.WindowEffect.disabled);
+    await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+    if (_boundsBeforeWidgetMode != null) {
+      await windowManager.setBounds(_boundsBeforeWidgetMode!);
+    }
+
+    setState(() => _isWidgetMode = false);
+  }
+
+  void _onWidgetOpacityChanged(double opacity) {
+    setState(() => _widgetOpacity = opacity);
+  }
+
+  String _boundsToString(Rect r) =>
+      '${r.left},${r.top},${r.width},${r.height}';
+
+  Rect _parseBounds(String s) {
+    final parts = s.split(',').map(double.parse).toList();
+    return Rect.fromLTWH(parts[0], parts[1], parts[2], parts[3]);
   }
 
   void _onTaskToggled(String taskId) {
@@ -329,6 +400,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isWidgetMode) {
+      return DesktopWidgetShell(
+        opacity: _widgetOpacity,
+        onOpacityChanged: _onWidgetOpacityChanged,
+        onExit: _exitWidgetMode,
+        child: CalendarScreen(
+          tasks: _tasks,
+          customCategories: _customCategories,
+          onTaskSelected: _onTaskSelected,
+          selectedTaskId: _selectedTask?.id,
+        ),
+      );
+    }
+
     return Scaffold(
       body: Column(
         children: [
@@ -370,6 +455,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onReorderCategories: _onReorderCategories,
                   isDarkMode: widget.isDarkMode,
                   onToggleDarkMode: widget.onToggleDarkMode,
+                  onLogout: widget.onLogout,
+                  onEnterWidgetMode: _enterWidgetMode,
                 ),
                 const VerticalDivider(width: 1, thickness: 1),
                 Expanded(child: _buildMainContent()),
