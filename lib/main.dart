@@ -1,8 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart' as acrylic;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
@@ -10,15 +12,19 @@ import 'screens/login_screen.dart';
 import 'services/firestore_service.dart';
 import 'theme/app_colors.dart';
 
-const _darkModePrefKey = 'darkMode';
+// window_manager/flutter_acrylic는 Windows 창 관리 전용 플러그인이라 Android에서는
+// 지원되지 않는다. 바탕화면 위젯 모드 기능(§ANDROID_PORT_PLAN.md 1.1, 1.3)도 Windows 전용.
+bool get _isDesktopWidgetHost => !kIsWeb && Platform.isWindows;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
-  // setSkipTaskbar 등 일부 기능은 내부적으로 taskbar COM 객체를 쓰는데,
-  // 이 호출 없이는 그 객체가 초기화되지 않아 위젯 모드 진입 시 네이티브 크래시가 났다.
-  await windowManager.waitUntilReadyToShow();
-  await acrylic.Window.initialize();
+  if (_isDesktopWidgetHost) {
+    await windowManager.ensureInitialized();
+    // setSkipTaskbar 등 일부 기능은 내부적으로 taskbar COM 객체를 쓰는데,
+    // 이 호출 없이는 그 객체가 초기화되지 않아 위젯 모드 진입 시 네이티브 크래시가 났다.
+    await windowManager.waitUntilReadyToShow();
+    await acrylic.Window.initialize();
+  }
 
   bool firebaseAvailable = false;
   try {
@@ -31,54 +37,19 @@ Future<void> main() async {
     debugPrint('Firebase 초기화 실패, 로컬 모드로 실행: $e');
   }
 
-  final prefs = await SharedPreferences.getInstance();
-  final initialDarkMode = prefs.getBool(_darkModePrefKey) ?? false;
-
-  runApp(TodoApp(
-    firebaseAvailable: firebaseAvailable,
-    initialDarkMode: initialDarkMode,
-  ));
+  runApp(TodoApp(firebaseAvailable: firebaseAvailable));
 }
 
-class TodoApp extends StatefulWidget {
+class TodoApp extends StatelessWidget {
   final bool firebaseAvailable;
-  final bool initialDarkMode;
-  const TodoApp({
-    super.key,
-    this.firebaseAvailable = false,
-    this.initialDarkMode = false,
-  });
-
-  @override
-  State<TodoApp> createState() => _TodoAppState();
-}
-
-class _TodoAppState extends State<TodoApp> {
-  bool _isDarkMode = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isDarkMode = widget.initialDarkMode;
-  }
-
-  Future<void> _toggleDarkMode() async {
-    setState(() => _isDarkMode = !_isDarkMode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_darkModePrefKey, _isDarkMode);
-  }
+  const TodoApp({super.key, this.firebaseAvailable = false});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '할 일 관리',
       debugShowCheckedModeBanner: false,
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.accent),
-        fontFamily: 'Malgun Gothic',
-        scaffoldBackgroundColor: AppColors.light.background,
-      ),
+      themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.accent,
@@ -87,11 +58,7 @@ class _TodoAppState extends State<TodoApp> {
         fontFamily: 'Malgun Gothic',
         scaffoldBackgroundColor: AppColors.dark.background,
       ),
-      home: AuthGate(
-        firebaseAvailable: widget.firebaseAvailable,
-        isDarkMode: _isDarkMode,
-        onToggleDarkMode: _toggleDarkMode,
-      ),
+      home: AuthGate(firebaseAvailable: firebaseAvailable),
     );
   }
 }
@@ -99,25 +66,14 @@ class _TodoAppState extends State<TodoApp> {
 // Firebase 연결 여부와 로그인 상태에 따라 로그인 화면/홈 화면을 전환한다.
 class AuthGate extends StatelessWidget {
   final bool firebaseAvailable;
-  final bool isDarkMode;
-  final VoidCallback onToggleDarkMode;
 
-  const AuthGate({
-    super.key,
-    required this.firebaseAvailable,
-    required this.isDarkMode,
-    required this.onToggleDarkMode,
-  });
+  const AuthGate({super.key, required this.firebaseAvailable});
 
   @override
   Widget build(BuildContext context) {
     if (!firebaseAvailable) {
       // Firebase 자체를 못 쓰는 상황(설정 미완료/오프라인) → 로컬 더미 데이터 모드
-      return HomeScreen(
-        useFirebase: false,
-        isDarkMode: isDarkMode,
-        onToggleDarkMode: onToggleDarkMode,
-      );
+      return const HomeScreen(useFirebase: false);
     }
 
     return StreamBuilder<User?>(
@@ -138,8 +94,6 @@ class AuthGate extends StatelessWidget {
         return HomeScreen(
           key: ValueKey(user.uid),
           useFirebase: true,
-          isDarkMode: isDarkMode,
-          onToggleDarkMode: onToggleDarkMode,
           onLogout: () => FirebaseAuth.instance.signOut(),
         );
       },

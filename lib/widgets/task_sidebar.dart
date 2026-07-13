@@ -1,6 +1,12 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../theme/app_colors.dart';
+
+// 바탕화면 위젯 모드는 Windows 창 관리 API 전용 기능이라 다른 플랫폼에서는 숨긴다.
+bool get _supportsDesktopWidgetMode => !kIsWeb && Platform.isWindows;
 
 class TaskSidebar extends StatelessWidget {
   final List<Category> customCategories;
@@ -12,8 +18,6 @@ class TaskSidebar extends StatelessWidget {
   final ValueChanged<Category> onEditCategoryColor;
   final ValueChanged<String> onDeleteCategory;
   final ValueChanged<List<Category>> onReorderCategories;
-  final bool isDarkMode;
-  final VoidCallback onToggleDarkMode;
   final VoidCallback? onLogout;
   final VoidCallback onEnterWidgetMode;
 
@@ -28,8 +32,6 @@ class TaskSidebar extends StatelessWidget {
     required this.onEditCategoryColor,
     required this.onDeleteCategory,
     required this.onReorderCategories,
-    required this.isDarkMode,
-    required this.onToggleDarkMode,
     required this.onEnterWidgetMode,
     this.onLogout,
   });
@@ -104,12 +106,6 @@ class TaskSidebar extends StatelessWidget {
       children: [
         const Divider(thickness: 1, height: 1),
         _SidebarButton(
-          icon: isDarkMode ? Icons.dark_mode : Icons.dark_mode_outlined,
-          label: isDarkMode ? '다크 모드' : '라이트 모드',
-          isActive: isDarkMode,
-          onTap: onToggleDarkMode,
-        ),
-        _SidebarButton(
           icon: isCalendarView
               ? Icons.calendar_month
               : Icons.calendar_month_outlined,
@@ -117,11 +113,12 @@ class TaskSidebar extends StatelessWidget {
           isActive: isCalendarView,
           onTap: onCalendarToggle,
         ),
-        _SidebarButton(
-          icon: Icons.dashboard_customize_outlined,
-          label: '바탕화면 위젯',
-          onTap: onEnterWidgetMode,
-        ),
+        if (_supportsDesktopWidgetMode)
+          _SidebarButton(
+            icon: Icons.dashboard_customize_outlined,
+            label: '바탕화면 위젯',
+            onTap: onEnterWidgetMode,
+          ),
         _SidebarButton(
           icon: Icons.add,
           label: '새 카테고리',

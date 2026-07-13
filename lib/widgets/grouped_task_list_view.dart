@@ -9,12 +9,13 @@ class GroupedTaskListView extends StatelessWidget {
   final String categoryName;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
-  final ValueChanged<String> onAddTask;
+  final void Function(String title, {String? categoryId}) onAddTask;
   final ValueChanged<String> onTaskDeleted;
   final ValueChanged<List<Task>> onTasksReordered;
   final bool hideCompleted;
   final VoidCallback onToggleHideCompleted;
   final String? selectedTaskId;
+  final VoidCallback? onSuggestTasks;
 
   const GroupedTaskListView({
     super.key,
@@ -29,6 +30,7 @@ class GroupedTaskListView extends StatelessWidget {
     required this.hideCompleted,
     required this.onToggleHideCompleted,
     this.selectedTaskId,
+    this.onSuggestTasks,
   });
 
   @override
@@ -52,6 +54,13 @@ class GroupedTaskListView extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onSuggestTasks != null)
+                IconButton(
+                  icon: const Icon(Icons.lightbulb_outline, size: 18),
+                  tooltip: '작업 제안',
+                  color: AppColors.of(context).textMuted,
+                  onPressed: onSuggestTasks,
+                ),
               IconButton(
                 icon: Icon(
                   hideCompleted ? Icons.visibility_off : Icons.visibility,
@@ -64,7 +73,6 @@ class GroupedTaskListView extends StatelessWidget {
             ],
           ),
         ),
-        _AddTaskRow(onSubmit: onAddTask),
         Expanded(
           child: tasks.isEmpty
               ? const Center(
@@ -91,6 +99,7 @@ class GroupedTaskListView extends StatelessWidget {
                   },
                 ),
         ),
+        _AddTaskRow(customCategories: customCategories, onSubmit: onAddTask),
       ],
     );
   }
@@ -131,9 +140,10 @@ class _GroupData {
 }
 
 class _AddTaskRow extends StatefulWidget {
-  final ValueChanged<String> onSubmit;
+  final List<Category> customCategories;
+  final void Function(String title, {String? categoryId}) onSubmit;
 
-  const _AddTaskRow({required this.onSubmit});
+  const _AddTaskRow({required this.customCategories, required this.onSubmit});
 
   @override
   State<_AddTaskRow> createState() => _AddTaskRowState();
@@ -141,11 +151,12 @@ class _AddTaskRow extends StatefulWidget {
 
 class _AddTaskRowState extends State<_AddTaskRow> {
   final _controller = TextEditingController();
+  String? _selectedCategoryId;
 
   void _submit() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    widget.onSubmit(text);
+    widget.onSubmit(text, categoryId: _selectedCategoryId);
     _controller.clear();
   }
 
@@ -157,8 +168,17 @@ class _AddTaskRowState extends State<_AddTaskRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    final colors = AppColors.of(context);
+    final matching =
+        widget.customCategories.where((c) => c.id == _selectedCategoryId);
+    final selectedCategory = matching.isEmpty ? null : matching.first;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceAlt,
+        border: Border(top: BorderSide(color: colors.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
           const SizedBox(width: 34),
@@ -171,6 +191,50 @@ class _AddTaskRowState extends State<_AddTaskRow> {
                 isDense: true,
               ),
               onSubmitted: (_) => _submit(),
+            ),
+          ),
+          PopupMenuButton<String?>(
+            tooltip: '카테고리 선택',
+            onSelected: (id) => setState(() => _selectedCategoryId = id),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: null, child: Text('카테고리 없음')),
+              ...widget.customCategories.map((c) => PopupMenuItem(
+                    value: c.id,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle, color: c.color),
+                        ),
+                        Text(c.name),
+                      ],
+                    ),
+                  )),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selectedCategory?.color ?? colors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    selectedCategory?.name ?? '카테고리 없음',
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
+                  Icon(Icons.arrow_drop_down, size: 16, color: colors.textMuted),
+                ],
+              ),
             ),
           ),
           IconButton(icon: const Icon(Icons.add, size: 20), onPressed: _submit),

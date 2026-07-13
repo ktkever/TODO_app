@@ -18,16 +18,16 @@ import '../widgets/task_sidebar.dart';
 const _widgetOpacityPrefKey = 'widgetOpacity';
 const _widgetBoundsPrefKey = 'widgetBounds'; // "x,y,w,h" 형식으로 저장
 
+// 이 폭보다 좁으면(폰) 좌측 사이드바는 Drawer로, 상세패널은 전체화면으로 전환한다.
+// 이 폭 이상(태블릿 가로/데스크톱)에서는 기존 3단 레이아웃을 그대로 쓴다.
+const _wideBreakpoint = 600.0;
+
 class HomeScreen extends StatefulWidget {
   final bool useFirebase;
-  final bool isDarkMode;
-  final VoidCallback onToggleDarkMode;
   final VoidCallback? onLogout;
   const HomeScreen({
     super.key,
     this.useFirebase = false,
-    this.isDarkMode = false,
-    required this.onToggleDarkMode,
     this.onLogout,
   });
 
@@ -196,9 +196,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onTaskSelected(Task task) {
+    if (MediaQuery.sizeOf(context).width < _wideBreakpoint) {
+      _pushDetailPanelFullScreen(task);
+      return;
+    }
     setState(() {
       _selectedTask = (_selectedTask?.id == task.id) ? null : task;
     });
+  }
+
+  // 좁은 화면(폰)에서는 상세패널을 슬라이드 패널 대신 전체화면으로 띄운다.
+  void _pushDetailPanelFullScreen(Task task) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (routeContext) => Scaffold(
+        body: SafeArea(
+          child: DetailPanel(
+            key: ValueKey(task.id),
+            task: task,
+            customCategories: _customCategories,
+            onClose: () => Navigator.of(routeContext).pop(),
+            onTaskChanged: _onTaskChanged,
+          ),
+        ),
+      ),
+    ));
   }
 
   void _onTaskChanged(Task updated) {
@@ -210,16 +231,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.useFirebase) FirestoreService.instance.updateTask(updated);
   }
 
-  void _onAddTask(String title) {
+  void _onAddTask(String title, {String? categoryId}) {
     final allCategories = [...defaultCategories, ..._customCategories];
     final selected =
         allCategories.firstWhere((c) => c.id == _selectedCategoryId);
-    final categoryId = selected.type == CategoryType.custom ? selected.id : null;
+    // 커스텀 카테고리 뷰에서는 그 카테고리로 고정. 기본 뷰(오늘 할일 등)에서는
+    // 할일 추가 칸의 카테고리 선택 토글로 고른 값을 그대로 쓴다.
+    final resolvedCategoryId =
+        selected.type == CategoryType.custom ? selected.id : categoryId;
 
     // 같은 카테고리 내 맨 뒤에 붙도록 order 계산 (드래그로 재정렬된
     // 카테고리에 새 항목이 끼어들지 않게 함)
-    final siblingOrders =
-        _tasks.where((t) => t.categoryId == categoryId).map((t) => t.order);
+    final siblingOrders = _tasks
+        .where((t) => t.categoryId == resolvedCategoryId)
+        .map((t) => t.order);
     final nextOrder = siblingOrders.isEmpty
         ? 0
         : siblingOrders.reduce((a, b) => a > b ? a : b) + 1;
@@ -228,11 +253,66 @@ class _HomeScreenState extends State<HomeScreen> {
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
       isToday: selected.type == CategoryType.today,
-      categoryId: categoryId,
+      categoryId: resolvedCategoryId,
       order: nextOrder,
     );
     setState(() => _tasks.add(task));
     if (widget.useFirebase) FirestoreService.instance.addTask(task);
+  }
+
+  // '오늘 할일'에 아직 없는 작업들을 보여주고, +를 누르는 즉시 오늘 할일에 추가한다.
+  Future<void> _showTaskSuggestionDialog() async {
+    final candidates = _tasks.where((t) => !t.isToday).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('작업 제안'),
+          content: SizedBox(
+            width: 360,
+            height: 400,
+            child: candidates.isEmpty
+                ? const Center(child: Text('추가할 수 있는 작업이 없습니다.'))
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: candidates.length,
+                    itemBuilder: (context, index) {
+                      final task = candidates[index];
+                      return ListTile(
+                        title: Text(task.title),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.add),
+                          tooltip: '오늘 할일에 추가',
+                          onPressed: () {
+                            _onAddTasksToToday({task.id});
+                            setDialogState(() => candidates.removeAt(index));
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('닫기'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onAddTasksToToday(Set<String> taskIds) {
+    setState(() {
+      for (final task in _tasks) {
+        if (taskIds.contains(task.id)) {
+          task.isToday = true;
+          if (widget.useFirebase) FirestoreService.instance.updateTask(task);
+        }
+      }
+    });
   }
 
   void _onTasksReordered(List<Task> reordered) {
@@ -395,6 +475,30 @@ class _HomeScreenState extends State<HomeScreen> {
       onTaskDeleted: _onTaskDeleted,
       onTasksReordered: _onTasksReordered,
       selectedTaskId: _selectedTask?.id,
+      onSuggestTasks:
+          _selectedCategoryId == 'today' ? _showTaskSuggestionDialog : null,
+    );
+  }
+
+  Widget _buildFirebaseBanner() {
+    if (widget.useFirebase) return const SizedBox.shrink();
+    return Material(
+      color: const Color(0xFFFFF4CE),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud_off, size: 16, color: Color(0xFF8A6914)),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                '로컬 모드 — Firebase 미연결. flutterfire configure 후 재빌드하면 클라우드 동기화가 활성화됩니다.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF8A6914)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -414,32 +518,18 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    return MediaQuery.sizeOf(context).width < _wideBreakpoint
+        ? _buildNarrowScaffold()
+        : _buildWideScaffold();
+  }
+
+  // 폭 넓음(태블릿 가로/데스크톱): 사이드바 상시 표시 + 상세패널 슬라이드.
+  Widget _buildWideScaffold() {
+    final banner = _buildFirebaseBanner();
     return Scaffold(
       body: Column(
         children: [
-          // Firebase 미연결 배너
-          if (!widget.useFirebase)
-            Material(
-              color: const Color(0xFFFFF4CE),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Row(
-                  children: [
-                    const Icon(Icons.cloud_off, size: 16,
-                        color: Color(0xFF8A6914)),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        '로컬 모드 — Firebase 미연결. flutterfire configure 후 재빌드하면 클라우드 동기화가 활성화됩니다.',
-                        style: TextStyle(
-                            fontSize: 12, color: Color(0xFF8A6914)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          banner,
           Expanded(
             child: Row(
               children: [
@@ -453,8 +543,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   onEditCategoryColor: _onEditCategoryColor,
                   onDeleteCategory: _onDeleteCategory,
                   onReorderCategories: _onReorderCategories,
-                  isDarkMode: widget.isDarkMode,
-                  onToggleDarkMode: widget.onToggleDarkMode,
                   onLogout: widget.onLogout,
                   onEnterWidgetMode: _enterWidgetMode,
                 ),
@@ -488,6 +576,54 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // 폭 좁음(폰): 사이드바는 버튼으로 여는 Drawer, 상세패널은 task 선택 시 전체화면.
+  Widget _buildNarrowScaffold() {
+    final banner = _buildFirebaseBanner();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isCalendarView ? '달력' : _selectedCategoryName),
+        actions: [
+          IconButton(
+            icon: Icon(_isCalendarView
+                ? Icons.calendar_month
+                : Icons.calendar_month_outlined),
+            tooltip: '달력 전환',
+            onPressed: _onCalendarToggle,
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: Builder(
+          builder: (drawerContext) => TaskSidebar(
+            customCategories: _customCategories,
+            selectedCategoryId: _selectedCategoryId,
+            isCalendarView: _isCalendarView,
+            onCategorySelected: (id) {
+              _onCategorySelected(id);
+              Navigator.pop(drawerContext);
+            },
+            onCalendarToggle: () {
+              _onCalendarToggle();
+              Navigator.pop(drawerContext);
+            },
+            onAddCategory: _onAddCategory,
+            onEditCategoryColor: _onEditCategoryColor,
+            onDeleteCategory: _onDeleteCategory,
+            onReorderCategories: _onReorderCategories,
+            onLogout: widget.onLogout,
+            onEnterWidgetMode: _enterWidgetMode,
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          banner,
+          Expanded(child: _buildMainContent()),
         ],
       ),
     );

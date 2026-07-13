@@ -9,7 +9,7 @@ class TaskListView extends StatelessWidget {
   final ValueChanged<Category> onRenameCategory;
   final ValueChanged<String> onTaskToggled;
   final ValueChanged<Task> onTaskSelected;
-  final ValueChanged<String> onAddTask;
+  final void Function(String title, {String? categoryId}) onAddTask;
   final ValueChanged<String> onTaskDeleted;
   final ValueChanged<List<Task>> onTasksReordered;
   final bool hideCompleted;
@@ -64,7 +64,6 @@ class TaskListView extends StatelessWidget {
             ],
           ),
         ),
-        _AddTaskRow(onSubmit: onAddTask),
         Expanded(
           child: tasks.isEmpty
               ? const Center(
@@ -97,6 +96,7 @@ class TaskListView extends StatelessWidget {
                   },
                 ),
         ),
+        _AddTaskRow(onSubmit: onAddTask),
       ],
     );
   }
@@ -144,7 +144,7 @@ class _CategoryTitleFieldState extends State<_CategoryTitleField> {
 }
 
 class _AddTaskRow extends StatefulWidget {
-  final ValueChanged<String> onSubmit;
+  final void Function(String title, {String? categoryId}) onSubmit;
 
   const _AddTaskRow({required this.onSubmit});
 
@@ -170,8 +170,13 @@ class _AddTaskRowState extends State<_AddTaskRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    final colors = AppColors.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceAlt,
+        border: Border(top: BorderSide(color: colors.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         children: [
           const SizedBox(width: 34),
