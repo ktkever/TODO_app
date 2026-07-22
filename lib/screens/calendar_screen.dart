@@ -371,6 +371,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final List<({Task task, int colStart, int colEnd, bool isBar})> entries = [];
 
     for (final task in widget.tasks) {
+      if (task.isCompleted) continue; // 완료된 할 일은 달력에 표시하지 않는다.
       if (task.startDate != null && task.dueDate != null) {
         // 기간 일정 — 이 주와 겹치는지 확인
         final s = task.startDate!;
