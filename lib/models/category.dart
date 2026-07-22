@@ -31,6 +31,14 @@ class Category {
     this.order = 0,
   });
 
+  // Android 홈스크린 위젯 캐시용 — toWidgetMap의 task.dart 쪽 주석 참고.
+  Map<String, dynamic> toWidgetMap() => {
+        'id': id,
+        'name': name,
+        'colorArgb': color.toARGB32(),
+        'order': order,
+      };
+
   Map<String, dynamic> toMap() => {
         'id': id,
         'name': name,

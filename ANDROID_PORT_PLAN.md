@@ -106,6 +106,75 @@ C(반응형 레이아웃)가 가장 손이 많이 가는 작업이므로, 그 �
 
 ## 3. 이번 범위에서 하지 않는 것
 
-- 홈스크린 위젯(Android App Widget) — Windows "바탕화면 위젯 모드"와는 완전히 다른 네이티브 기능이라 별도 기획 필요.
+- ~~홈스크린 위젯(Android App Widget)~~ → **§4에서 구현 완료** (2026-07-22). 아래 참고.
 - 푸시 알림 백엔드(§6과 동일하게 기존에도 범위 밖).
 - 스토어(Play Console) 배포 설정(서명, 아이콘, 스토어 등록 정보).
+
+---
+
+## 4. 홈스크린 위젯 (Android App Widget) — 구현 완료 (2026-07-22)
+
+당초 §1.3 / §3에서 "완전히 다른 네이티브 기능이라 별도 기획 필요"로 미뤄뒀던 항목을 실제로 구현했다.
+Windows의 "바탕화면 위젯 모드"(프레임리스 창)와는 무관한, **안드로이드 네이티브 App Widget**이다.
+Flutter 화면 코드는 재사용하지 않고, `home_widget` 패키지 + **Jetpack Glance**(Compose 기반 위젯 UI)로
+네이티브에서 별도 렌더링한다.
+
+### 4.1 제공하는 위젯 2종
+
+| 위젯 | 크기 | 내용 | 진입 클래스 |
+| --- | --- | --- | --- |
+| **할 일 목록 위젯** | 3x2 | '오늘 할일' 목록을 표시. 상단 "+" 버튼으로 퀵애드, 카테고리 이름 탭으로 대상 카테고리 변경 | `TodoWidget` / `TodoWidgetReceiver` |
+| **달력 위젯** | 4x6 | 이번 달 달력에 기간/단일 일정을 카테고리 색으로 표시 | `CalendarWidget` / `CalendarWidgetReceiver` |
+
+위젯 정보(XML)는 [todo_widget_info.xml](android/app/src/main/res/xml/todo_widget_info.xml),
+[calendar_widget_info.xml](android/app/src/main/res/xml/calendar_widget_info.xml)에 정의. `updatePeriodMillis=0`으로
+OS 자동 갱신은 끄고, 앱/WorkManager가 갱신을 주도한다.
+
+### 4.2 데이터 흐름 (앱 → 위젯)
+
+1. 앱이 켜져 있는 동안 [home_screen.dart](lib/screens/home_screen.dart)의 Firestore 스트림 리스너가
+   갱신될 때마다 `_syncHomeWidget()` → [HomeWidgetService.syncSnapshot()](lib/services/home_widget_service.dart#L29) 호출.
+2. `syncSnapshot()`은 `Task.toWidgetMap()` / `Category.toWidgetMap()`([task.dart](lib/models/task.dart), [category.dart](lib/models/category.dart))로
+   **위젯 전용 경량 JSON**을 만든다. Firestore `Timestamp` 대신 epoch millis, 색상은 ARGB int로 직렬화 —
+   네이티브(Kotlin `org.json`)에서 바로 파싱할 수 있게 하기 위함.
+3. `HomeWidget.saveWidgetData('tasks_json' / 'categories_json', ...)`로 SharedPreferences에 캐시 후
+   `updateWidget()`으로 두 위젯을 다시 그린다.
+4. 네이티브 쪽 [WidgetDataSync.kt](android/app/src/main/kotlin/com/example/todo_app/widget/WidgetDataSync.kt)가
+   그 JSON을 읽어 Glance UI(할 일 목록·달력)를 구성한다.
+
+앱이 꺼져 있을 때를 위한 백업 경로로 [WidgetRefreshWorker.kt](android/app/src/main/kotlin/com/example/todo_app/widget/WidgetRefreshWorker.kt) +
+[WidgetSyncScheduler.kt](android/app/src/main/kotlin/com/example/todo_app/widget/WidgetSyncScheduler.kt)가
+WorkManager 주기 작업으로 네이티브에서 Firestore/Auth를 직접 읽어 캐시를 갱신한다(빌드 의존성 `firebase-bom`, `work-runtime-ktx`).
+
+### 4.3 위젯 → 앱 (상호작용)
+
+- **"+" 퀵애드**: 위젯의 + 버튼 → [QuickAddActivity.kt](android/app/src/main/kotlin/com/example/todo_app/widget/QuickAddActivity.kt)
+  (초경량 다이얼로그 테마 `QuickAddTheme`, [activity_quick_add.xml](android/app/src/main/res/layout/activity_quick_add.xml))에서
+  제목 입력 → `homewidget://addtask?title=...&isToday=...&categoryId=...` 브로드캐스트 발송.
+- 이 브로드캐스트는 `es.antonborri.home_widget.HomeWidgetBackgroundReceiver`(AndroidManifest 등록)가 받아
+  Dart **헤드리스 콜백** [widgetBackgroundCallback](lib/services/home_widget_service.dart#L59)을 기동 → Firebase 초기화 후
+  현재 로그인 사용자로 `FirestoreService.addTask()` 실행. 앱을 열지 않고도 할 일이 추가된다.
+- **카테고리 변경**: 위젯의 카테고리 이름 탭 → [CategoryPickerActivity.kt](android/app/src/main/kotlin/com/example/todo_app/widget/CategoryPickerActivity.kt)에서
+  캐시된 카테고리 목록을 다이얼로그로 띄워 선택. 선택 결과는 위젯의 대상 카테고리로 저장된다.
+- 위젯 본체 탭 → AndroidManifest의 `home_widget.action.LAUNCH` 인텐트필터로 앱 실행.
+
+### 4.4 빌드 설정 변경 (Glance/Compose 도입에 따른)
+
+- [settings.gradle.kts](android/settings.gradle.kts) / [app/build.gradle.kts](android/app/build.gradle.kts):
+  `org.jetbrains.kotlin.plugin.compose` 플러그인 추가(Kotlin 버전 2.3.20에 맞춤), `buildFeatures { compose = true }`,
+  `androidx.glance:glance-appwidget`, `androidx.work:work-runtime-ktx`, `firebase-bom(34.16.0)` + firestore/auth 의존성.
+- [pubspec.yaml](pubspec.yaml): `home_widget: ^0.9.3` 추가.
+- [AndroidManifest.xml](android/app/src/main/AndroidManifest.xml): 위젯 리시버 2종, 백그라운드 리시버,
+  QuickAdd/CategoryPicker 액티비티, LAUNCH 인텐트필터, 위젯 설명 문자열([strings.xml](android/app/src/main/res/values/strings.xml)) 등록.
+- [gradle.properties](android/gradle.properties): `kotlin.incremental=false` — 프로젝트(D:)와 pub 캐시(C:) 드라이브가 달라
+  Kotlin 증분 컴파일러가 "different roots"로 죽는 Windows 멀티 드라이브 버그 우회.
+- [task_list_view.dart](lib/widgets/task_list_view.dart) / [grouped_task_list_view.dart](lib/widgets/grouped_task_list_view.dart):
+  할 일 추가 입력행을 `SafeArea(top: false)`로 감싸 안드로이드 하단 제스처 바와 겹치지 않게 처리.
+
+### 4.5 남은 개선 여지 (알려진 한계)
+
+- 위젯에서 추가한 할 일은 `order=0` 고정이라 같은 카테고리 맨 앞에 올 수 있음
+  (`home_widget_service.dart`의 `ponytail:` 주석 참고). 필요 시 캐시 JSON에서 max order 계산으로 개선.
+- `applicationId`가 여전히 `com.example.todo_app`(예시값). 스토어 배포 시 변경 필요(§1.6).
+- home_widget 패키지가 아직 Flutter Built-in Kotlin(KGP)으로 마이그레이션되지 않아 릴리스 빌드 시 경고 발생.
+  현재 빌드/동작에는 영향 없음.

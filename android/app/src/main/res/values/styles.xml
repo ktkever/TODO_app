@@ -15,4 +15,6 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- TODO 위젯의 "+" 버튼이 여는 초경량 퀵애드 다이얼로그용 -->
+    <style name="QuickAddTheme" parent="@android:style/Theme.Material.Light.Dialog" />
 </resources>

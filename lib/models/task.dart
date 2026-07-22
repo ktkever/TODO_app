@@ -33,6 +33,19 @@ class Task {
     this.order = 0,
   });
 
+  // Android 홈스크린 위젯 캐시용 — Firestore Timestamp 대신 epoch millis를 쓴다
+  // (위젯은 Kotlin에서 org.json으로 파싱하므로 Timestamp 객체를 그대로 넘길 수 없음).
+  Map<String, dynamic> toWidgetMap() => {
+        'id': id,
+        'title': title,
+        'isCompleted': isCompleted,
+        'categoryId': categoryId,
+        'isToday': isToday,
+        'startDateMillis': startDate?.millisecondsSinceEpoch,
+        'dueDateMillis': dueDate?.millisecondsSinceEpoch,
+        'order': order,
+      };
+
   Map<String, dynamic> toMap() => {
         'id': id,
         'title': title,

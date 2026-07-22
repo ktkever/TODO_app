@@ -25,7 +25,64 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- 홈스크린 위젯에서 앱을 열 때(actionStartActivity) 사용 -->
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.LAUNCH" />
+            </intent-filter>
         </activity>
+
+        <!-- TODO 위젯 "+" 버튼이 여는 퀵애드 다이얼로그 -->
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/QuickAddTheme"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
+
+        <!-- TODO 위젯 카테고리 이름 탭 시 여는 목록 피커 -->
+        <activity
+            android:name=".widget.CategoryPickerActivity"
+            android:exported="false"
+            android:theme="@style/QuickAddTheme"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
+
+        <!-- 홈스크린 위젯: TODO(3x2) -->
+        <receiver
+            android:name=".widget.TodoWidgetReceiver"
+            android:exported="true"
+            android:label="@string/todo_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todo_widget_info" />
+        </receiver>
+
+        <!-- 홈스크린 위젯: 달력(4x6) -->
+        <receiver
+            android:name=".widget.CalendarWidgetReceiver"
+            android:exported="true"
+            android:label="@string/calendar_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+
+        <!-- home_widget 패키지가 위젯의 "+" 버튼 등에서 보낸 브로드캐스트를 받아
+             Dart 백그라운드 콜백(widgetBackgroundCallback)을 헤드리스로 기동시킨다. -->
+        <receiver
+            android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

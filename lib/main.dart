@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/firestore_service.dart';
+import 'services/home_widget_service.dart';
 import 'theme/app_colors.dart';
 
 // window_manager/flutter_acrylic는 Windows 창 관리 전용 플러그인이라 Android에서는
@@ -36,6 +37,8 @@ Future<void> main() async {
     // Firebase 미설정 또는 네트워크 오류 → 로컬 더미 데이터로 실행
     debugPrint('Firebase 초기화 실패, 로컬 모드로 실행: $e');
   }
+
+  await HomeWidgetService.registerBackgroundCallback();
 
   runApp(TodoApp(firebaseAvailable: firebaseAvailable));
 }

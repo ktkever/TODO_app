@@ -9,6 +9,7 @@ import '../models/dummy_data.dart';
 import '../models/task.dart';
 import '../screens/calendar_screen.dart';
 import '../services/firestore_service.dart';
+import '../services/home_widget_service.dart';
 import '../widgets/desktop_widget_shell.dart';
 import '../widgets/detail_panel.dart';
 import '../widgets/grouped_task_list_view.dart';
@@ -74,11 +75,18 @@ class _HomeScreenState extends State<HomeScreen> {
           _loading = false;
         });
       }
+      _syncHomeWidget();
     });
 
     _tasksSub = svc.watchTasks().listen((tasks) {
       if (mounted) setState(() => _tasks = tasks);
+      _syncHomeWidget();
     });
+  }
+
+  // 앱이 켜져 있는 동안 Firestore 변경사항을 Android 홈스크린 위젯 캐시에 반영.
+  void _syncHomeWidget() {
+    HomeWidgetService.syncSnapshot(tasks: _tasks, categories: _customCategories);
   }
 
   @override

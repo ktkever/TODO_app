@@ -169,36 +169,40 @@ class _AddTaskRowState extends State<_AddTaskRow> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final matching =
-        widget.customCategories.where((c) => c.id == _selectedCategoryId);
+    final matching = widget.customCategories.where(
+      (c) => c.id == _selectedCategoryId,
+    );
     final selectedCategory = matching.isEmpty ? null : matching.first;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceAlt,
-        border: Border(top: BorderSide(color: colors.border)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Row(
-        children: [
-          const SizedBox(width: 34),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: '할 일 추가',
-                border: InputBorder.none,
-                isDense: true,
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surfaceAlt,
+          border: Border(top: BorderSide(color: colors.border)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Row(
+          children: [
+            const SizedBox(width: 34),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: '할 일 추가',
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                onSubmitted: (_) => _submit(),
               ),
-              onSubmitted: (_) => _submit(),
             ),
-          ),
-          PopupMenuButton<String?>(
-            tooltip: '카테고리 선택',
-            onSelected: (id) => setState(() => _selectedCategoryId = id),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: null, child: Text('카테고리 없음')),
-              ...widget.customCategories.map((c) => PopupMenuItem(
+            PopupMenuButton<String?>(
+              tooltip: '카테고리 선택',
+              onSelected: (id) => setState(() => _selectedCategoryId = id),
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: null, child: Text('카테고리 없음')),
+                ...widget.customCategories.map(
+                  (c) => PopupMenuItem(
                     value: c.id,
                     child: Row(
                       children: [
@@ -207,38 +211,52 @@ class _AddTaskRowState extends State<_AddTaskRow> {
                           height: 10,
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
-                              shape: BoxShape.circle, color: c.color),
+                            shape: BoxShape.circle,
+                            color: c.color,
+                          ),
                         ),
                         Text(c.name),
                       ],
                     ),
-                  )),
-            ],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: selectedCategory?.color ?? colors.textMuted,
+                  ),
+                ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: selectedCategory?.color ?? colors.textMuted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    selectedCategory?.name ?? '카테고리 없음',
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                  ),
-                  Icon(Icons.arrow_drop_down, size: 16, color: colors.textMuted),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      selectedCategory?.name ?? '카테고리 없음',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 16,
+                      color: colors.textMuted,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          IconButton(icon: const Icon(Icons.add, size: 20), onPressed: _submit),
-        ],
+            IconButton(
+              icon: const Icon(Icons.add, size: 20),
+              onPressed: _submit,
+            ),
+          ],
+        ),
       ),
     );
   }

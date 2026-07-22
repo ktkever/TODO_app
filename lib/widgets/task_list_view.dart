@@ -43,13 +43,15 @@ class TaskListView extends StatelessWidget {
               Expanded(
                 child: _CategoryTitleField(
                   initialName: category.name,
-                  onChanged: (text) => onRenameCategory(Category(
-                    id: category.id,
-                    name: text,
-                    type: category.type,
-                    color: category.color,
-                    order: category.order,
-                  )),
+                  onChanged: (text) => onRenameCategory(
+                    Category(
+                      id: category.id,
+                      name: text,
+                      type: category.type,
+                      color: category.color,
+                      order: category.order,
+                    ),
+                  ),
                 ),
               ),
               IconButton(
@@ -171,28 +173,34 @@ class _AddTaskRowState extends State<_AddTaskRow> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceAlt,
-        border: Border(top: BorderSide(color: colors.border)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Row(
-        children: [
-          const SizedBox(width: 34),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: '할 일 추가',
-                border: InputBorder.none,
-                isDense: true,
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surfaceAlt,
+          border: Border(top: BorderSide(color: colors.border)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Row(
+          children: [
+            const SizedBox(width: 34),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: '할 일 추가',
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                onSubmitted: (_) => _submit(),
               ),
-              onSubmitted: (_) => _submit(),
             ),
-          ),
-          IconButton(icon: const Icon(Icons.add, size: 20), onPressed: _submit),
-        ],
+            IconButton(
+              icon: const Icon(Icons.add, size: 20),
+              onPressed: _submit,
+            ),
+          ],
+        ),
       ),
     );
   }

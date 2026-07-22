@@ -24,6 +24,8 @@ plugins {
     id("com.google.gms.google-services") version("4.3.15") apply false
     // END: FlutterFire Configuration
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    // 홈스크린 위젯(Glance)이 Compose 컴파일러를 필요로 해서 추가 — Kotlin 버전과 맞춰야 함.
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.20" apply false
 }
 
 include(":app")
