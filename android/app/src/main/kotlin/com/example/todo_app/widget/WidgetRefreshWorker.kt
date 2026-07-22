@@ -1,7 +1,6 @@
 package com.example.todo_app.widget
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.android.gms.tasks.Tasks
@@ -61,8 +60,8 @@ class WidgetRefreshWorker(context: Context, params: WorkerParameters) :
                 .putString(KEY_CATEGORIES_JSON, categoriesJson.toString())
                 .apply()
 
-            TodoWidget().updateAll(applicationContext)
-            CalendarWidget().updateAll(applicationContext)
+            notifyWidgetUpdate(applicationContext, TodoWidgetReceiver::class.java)
+            notifyWidgetUpdate(applicationContext, CalendarWidgetReceiver::class.java)
             Result.success()
         } catch (e: Exception) {
             Result.retry()

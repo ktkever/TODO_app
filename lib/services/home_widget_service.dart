@@ -48,6 +48,16 @@ class HomeWidgetService {
     if (!isAndroidWidgetHost) return;
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
   }
+
+  // 위젯의 빈 영역 탭 등으로 앱이 열릴 때 전달되는 딥링크(homewidget://open?target=...).
+  // 앱이 이미 떠 있을 때는 이 스트림으로, 콜드 스타트 때는 initialLaunchUri()로 들어온다.
+  static Stream<Uri?> get launchUris =>
+      isAndroidWidgetHost ? HomeWidget.widgetClicked : const Stream.empty();
+
+  static Future<Uri?> initialLaunchUri() async {
+    if (!isAndroidWidgetHost) return null;
+    return HomeWidget.initiallyLaunchedFromHomeWidget();
+  }
 }
 
 // 위젯에서 보낸 homewidget://addtask?title=...&isToday=...&categoryId=... 브로드캐스트를

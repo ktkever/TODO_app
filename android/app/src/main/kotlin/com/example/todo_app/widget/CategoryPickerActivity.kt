@@ -8,11 +8,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.glance.appwidget.updateAll
 import com.example.todo_app.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 // TODO 위젯 좌상단 카테고리 이름을 탭하면 뜨는 목록 피커 — 기본 4개 뷰 + 사용자 지정
 // 카테고리를 한 번에 보여주고 탭 한 번으로 바로 선택한다(예전의 탭-순환 방식을 대체).
@@ -34,7 +30,7 @@ class CategoryPickerActivity : Activity() {
             row.gravity = Gravity.CENTER_VERTICAL
             row.setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
             if (index == currentIndex) {
-                row.setBackgroundColor(Color.parseColor("#F0F0F0"))
+                row.setBackgroundColor(Color.parseColor("#3A3A3C"))
             }
 
             if (target.isCustom) {
@@ -53,15 +49,14 @@ class CategoryPickerActivity : Activity() {
 
             val label = TextView(this)
             label.text = target.name
-            label.textSize = 14f
+            label.textSize = 15f
+            label.setTextColor(Color.parseColor("#F2F2F2"))
             row.addView(label)
 
             row.setOnClickListener {
                 prefs.edit().putInt(KEY_TOGGLE_INDEX, index).apply()
-                CoroutineScope(Dispatchers.Main).launch {
-                    TodoWidget().updateAll(applicationContext)
-                    finish()
-                }
+                notifyWidgetUpdate(applicationContext, TodoWidgetReceiver::class.java)
+                finish()
             }
 
             list.addView(row)

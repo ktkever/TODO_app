@@ -1,9 +1,28 @@
 package com.example.todo_app.widget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import java.util.Calendar
 import org.json.JSONArray
+
+// 위젯 갱신은 항상 해당 리시버로 APPWIDGET_UPDATE 브로드캐스트를 보내 처리한다.
+// GlanceAppWidget.update()/updateAll()을 직접 부르면 (1) 방금 쓴 SharedPreferences 최신값이
+// 반영되지 않고(Glance가 캐시된 상태를 그대로 그림 → 투명도/화살표 버튼이 안 먹힘),
+// (2) 두 위젯 레이아웃이 교차 오염돼(달력 위젯이 할일 위젯으로 바뀜) 문제가 난다.
+// 리시버(HomeWidgetGlanceWidgetReceiver.onUpdate)는 updateAppWidgetState로 상태를 재로딩한 뒤
+// 자기 위젯만 그리므로 두 문제가 모두 해결된다. 앱(Dart) 경로의 HomeWidget.updateWidget과 동일한 방식.
+fun notifyWidgetUpdate(context: Context, receiver: Class<*>) {
+    val ids = AppWidgetManager.getInstance(context)
+        .getAppWidgetIds(ComponentName(context, receiver))
+    if (ids.isEmpty()) return
+    context.sendBroadcast(Intent(context, receiver).apply {
+        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+    })
+}
 
 // Dart 쪽 HomeWidgetService.syncSnapshot / widgetBackgroundCallback과 공유하는 캐시 포맷.
 // (lib/services/home_widget_service.dart, lib/models/task.dart의 toWidgetMap 참고)
@@ -13,9 +32,19 @@ const val KEY_CATEGORIES_JSON = "categories_json"
 const val KEY_TOGGLE_INDEX = "todo_widget_toggle_index"
 const val KEY_OPACITY_INDEX = "todo_widget_opacity_index"
 const val KEY_CALENDAR_OPACITY_INDEX = "calendar_widget_opacity_index"
+// 달력 위젯이 현재 표시 중인 달의 오프셋(0 = 이번 달, -1 = 지난 달, +1 = 다음 달). 좌우 화살표로 조절.
+const val KEY_CALENDAR_MONTH_OFFSET = "calendar_widget_month_offset"
 
 // 100/75/50/25% — TODO 위젯 투명도 아이콘을 탭할 때마다 이 목록을 순환한다.
 val OPACITY_STEPS = listOf(1.0f, 0.75f, 0.5f, 0.25f)
+
+// ── 위젯 다크 테마 색상 (앱이 다크 모드 고정이라 위젯도 통일) ──
+// 0xAARRGGBB. compose Color(Long) 생성자로 사용한다.
+const val WIDGET_BG_ARGB: Long = 0xFF1C1C1E // 배경(불투명 다크)
+const val WIDGET_TEXT_ARGB: Long = 0xFFF2F2F2 // 기본 텍스트(밝음)
+const val WIDGET_SUBTEXT_ARGB: Long = 0xFF9E9E9E // 보조 텍스트(회색)
+const val WIDGET_GRID_ARGB: Long = 0xFF6E6E73 // 달력 격자 구분선(다크 배경에서 뚜렷하게 밝은 회색)
+const val WIDGET_ACCENT_ARGB: Long = 0xFF4CA0FF // 오늘/강조(다크 배경에서 잘 보이는 밝은 파랑)
 
 data class WidgetTask(
     val id: String,

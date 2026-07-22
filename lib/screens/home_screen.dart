@@ -51,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   StreamSubscription<List<Task>>? _tasksSub;
   StreamSubscription<List<Category>>? _categoriesSub;
+  StreamSubscription<Uri?>? _widgetLaunchSub;
 
   @override
   void initState() {
@@ -61,6 +62,18 @@ class _HomeScreenState extends State<HomeScreen> {
       _tasks = buildDummyTasks();
       _customCategories = List.from(dummyCustomCategories);
       _loading = false;
+    }
+    // 홈스크린 위젯 빈 영역 탭 → 위젯에 선택된 카테고리로 앱을 연다.
+    HomeWidgetService.initialLaunchUri().then(_handleWidgetLaunch);
+    _widgetLaunchSub = HomeWidgetService.launchUris.listen(_handleWidgetLaunch);
+  }
+
+  // homewidget://open?target=<카테고리 id> 딥링크를 받아 해당 카테고리를 선택한다.
+  void _handleWidgetLaunch(Uri? uri) {
+    if (uri == null || uri.host != 'open' || !mounted) return;
+    final target = uri.queryParameters['target'];
+    if (target != null && target.isNotEmpty) {
+      _onCategorySelected(target);
     }
   }
 
@@ -93,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _tasksSub?.cancel();
     _categoriesSub?.cancel();
+    _widgetLaunchSub?.cancel();
     super.dispose();
   }
 
@@ -606,8 +620,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: Drawer(
-        child: Builder(
-          builder: (drawerContext) => TaskSidebar(
+        // 상/하단 시스템 영역(상태바·제스처 바)과 겹치지 않도록 세이프 영역 확보.
+        child: SafeArea(
+          child: Builder(
+            builder: (drawerContext) => TaskSidebar(
             customCategories: _customCategories,
             selectedCategoryId: _selectedCategoryId,
             isCalendarView: _isCalendarView,
@@ -625,6 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onReorderCategories: _onReorderCategories,
             onLogout: widget.onLogout,
             onEnterWidgetMode: _enterWidgetMode,
+            ),
           ),
         ),
       ),

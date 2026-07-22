@@ -25,7 +25,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _focusedMonth;
 
   static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-  static const _cellHeight = 90.0;
+  static const _cellHeight = 100.0;
 
   @override
   void initState() {
@@ -77,7 +77,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     final weeks = _buildWeeks();
 
-    return Column(
+    return GestureDetector(
+      // 좌우 스와이프로 월 페이지 넘김(오른쪽=이전 달, 왼쪽=다음 달).
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v > 0) {
+          _prevMonth();
+        } else if (v < 0) {
+          _nextMonth();
+        }
+      },
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(),
@@ -95,6 +105,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ],
+      ),
     );
   }
 
@@ -155,7 +166,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: isSun
                       ? Colors.red[400]
@@ -209,8 +220,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             alignment: Alignment.topRight,
                             child: isToday
                                 ? Container(
-                                    width: 22,
-                                    height: 22,
+                                    width: 26,
+                                    height: 26,
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: Color(0xFF0078D4),
@@ -219,7 +230,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     child: Text(
                                       '${day.day}',
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 15,
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -228,7 +239,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 : Text(
                                     '${day.day}',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 15,
                                       color: !isCurrentMonth
                                           ? colors.textMuted
                                           : isSun
@@ -318,14 +329,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       final left = entry.colStart * cellWidth + 2;
       final width = (entry.colEnd - entry.colStart + 1) * cellWidth - 4;
-      final top = 26.0 + row * 20.0;
+      final top = 32.0 + row * 22.0;
       final color = _colorFor(entry.task.categoryId);
 
       widgets.add(Positioned(
         left: left,
         top: top,
         width: width,
-        height: 16,
+        height: 19,
         child: GestureDetector(
           onTap: () => widget.onTaskSelected(entry.task),
           child: Container(
@@ -339,7 +350,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Text(
               entry.task.title,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 color: entry.isBar ? Colors.white : color,
                 fontWeight: FontWeight.w500,
                 overflow: TextOverflow.ellipsis,

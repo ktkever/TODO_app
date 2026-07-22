@@ -47,6 +47,15 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask" />
 
+        <!-- 위젯 투명도/달력 월이동 버튼용 무화면 트램폴린 -->
+        <activity
+            android:name=".widget.WidgetActionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask" />
+
         <!-- 홈스크린 위젯: TODO(3x2) -->
         <receiver
             android:name=".widget.TodoWidgetReceiver"
