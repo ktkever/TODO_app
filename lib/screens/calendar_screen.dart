@@ -7,6 +7,9 @@ class CalendarScreen extends StatefulWidget {
   final List<Task> tasks;
   final List<Category> customCategories;
   final ValueChanged<Task> onTaskSelected;
+  final ValueChanged<DateTime>? onCreateOnDate;
+  final ValueChanged<Task>? onTaskChanged;
+  final ValueChanged<String>? onTaskDeleted;
   final String? selectedTaskId;
 
   const CalendarScreen({
@@ -14,6 +17,9 @@ class CalendarScreen extends StatefulWidget {
     required this.tasks,
     required this.customCategories,
     required this.onTaskSelected,
+    this.onCreateOnDate,
+    this.onTaskChanged,
+    this.onTaskDeleted,
     this.selectedTaskId,
   });
 
@@ -72,6 +78,85 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // 드래그로 일정을 targetDay로 옮긴다 — 기간(duration)은 유지한 채 기한만 이동.
+  void _moveTaskTo(Task task, DateTime targetDay) {
+    if (widget.onTaskChanged == null) return;
+    final target = DateTime(targetDay.year, targetDay.month, targetDay.day);
+    if (task.startDate == null) {
+      task.dueDate = target; // 단일 마감일
+    } else {
+      final dur = task.dueDate!.difference(task.startDate!);
+      task.startDate = target;
+      task.dueDate = target.add(dur);
+    }
+    widget.onTaskChanged!.call(task);
+  }
+
+  // 일정 우클릭 → 세부 설정 팝업(카테고리 이동 / 할일 삭제).
+  Future<void> _showTaskMenu(Task task, Offset globalPos) async {
+    final rect = RelativeRect.fromLTRB(
+        globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
+    final action = await showMenu<String>(
+      context: context,
+      position: rect,
+      items: const [
+        PopupMenuItem(
+          value: 'move',
+          child: Row(children: [
+            Icon(Icons.drive_file_move_outline, size: 18),
+            SizedBox(width: 8),
+            Text('카테고리 이동'),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            Icon(Icons.delete_outline, size: 18),
+            SizedBox(width: 8),
+            Text('할일 삭제'),
+          ]),
+        ),
+      ],
+    );
+    if (!mounted) return;
+    if (action == 'delete') {
+      widget.onTaskDeleted?.call(task.id);
+    } else if (action == 'move') {
+      _showCategoryMenu(task, globalPos);
+    }
+  }
+
+  // '카테고리 이동' 선택 시 카테고리 목록 팝업.
+  Future<void> _showCategoryMenu(Task task, Offset globalPos) async {
+    if (widget.onTaskChanged == null) return;
+    final rect = RelativeRect.fromLTRB(
+        globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
+    const noneValue = '__none__';
+    final picked = await showMenu<String>(
+      context: context,
+      position: rect,
+      items: [
+        const PopupMenuItem(value: noneValue, child: Text('카테고리 없음')),
+        ...widget.customCategories.map((c) => PopupMenuItem(
+              value: c.id,
+              child: Row(children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: c.color),
+                ),
+                const SizedBox(width: 8),
+                Text(c.name),
+              ]),
+            )),
+      ],
+    );
+    if (!mounted || picked == null) return;
+    task.categoryId = picked == noneValue ? null : picked;
+    widget.onTaskChanged!.call(task);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -205,8 +290,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
               return SizedBox(
                 width: cellWidth,
                 height: _cellHeight,
-                child: Container(
+                child: GestureDetector(
+                  // 빈 날짜 칸 더블클릭/더블탭 → 그 날짜에 새 할일 생성.
+                  onDoubleTap: (day == null || widget.onCreateOnDate == null)
+                      ? null
+                      : () => widget.onCreateOnDate!(day),
+                  child: DragTarget<Task>(
+                    // 드래그해 온 일정을 이 날짜로 떨어뜨리면 기한 이동.
+                    onWillAcceptWithDetails: (_) =>
+                        day != null && widget.onTaskChanged != null,
+                    onAcceptWithDetails: (d) => _moveTaskTo(d.data, day!),
+                    builder: (context, candidate, rejected) => Container(
                   decoration: BoxDecoration(
+                    color: candidate.isNotEmpty ? colors.selectedBg : null,
                     border: Border(
                       right: BorderSide(color: colors.border),
                       bottom: BorderSide(color: colors.border),
@@ -251,6 +347,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                           ),
                         ),
+                ),
+                ),
                 ),
               );
             }).toList(),
@@ -332,31 +430,64 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final top = 32.0 + row * 22.0;
       final color = _colorFor(entry.task.categoryId);
 
+      final barContent = Container(
+        decoration: BoxDecoration(
+          color: entry.isBar ? color : color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(3),
+          border: entry.isBar ? null : Border.all(color: color, width: 1),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text(
+          entry.task.title,
+          style: TextStyle(
+            fontSize: 12,
+            color: entry.isBar ? Colors.white : color,
+            fontWeight: FontWeight.w500,
+            overflow: TextOverflow.ellipsis,
+          ),
+          maxLines: 1,
+        ),
+      );
+
       widgets.add(Positioned(
         left: left,
         top: top,
         width: width,
         height: 19,
-        child: GestureDetector(
-          onTap: () => widget.onTaskSelected(entry.task),
-          child: Container(
-            decoration: BoxDecoration(
-              color: entry.isBar ? color : color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(3),
-              border: entry.isBar ? null : Border.all(color: color, width: 1),
-            ),
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              entry.task.title,
-              style: TextStyle(
-                fontSize: 12,
-                color: entry.isBar ? Colors.white : color,
-                fontWeight: FontWeight.w500,
-                overflow: TextOverflow.ellipsis,
+        // 좌클릭 꾹(롱프레스) → 드래그로 다른 날짜에 떨어뜨리면 기한 이동(DragTarget=날짜 칸).
+        child: LongPressDraggable<Task>(
+          data: entry.task,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: width,
+              height: 19,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(3),
               ),
-              maxLines: 1,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                entry.task.title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
+              ),
             ),
+          ),
+          childWhenDragging: Opacity(opacity: 0.3, child: barContent),
+          child: GestureDetector(
+            onTap: () => widget.onTaskSelected(entry.task),
+            // 우클릭 → 세부 설정 팝업(카테고리 이동/삭제).
+            onSecondaryTapDown: (d) =>
+                _showTaskMenu(entry.task, d.globalPosition),
+            child: barContent,
           ),
         ),
       ));

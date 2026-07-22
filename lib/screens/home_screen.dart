@@ -282,6 +282,32 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.useFirebase) FirestoreService.instance.addTask(task);
   }
 
+  // 달력에서 날짜 더블클릭 → 그 날짜를 마감일로 하는 새 할일을 만들고 상세 패널을 연다(기한 ON).
+  void _onCreateTaskOnDate(DateTime date) {
+    final allCategories = [...defaultCategories, ..._customCategories];
+    final selected = allCategories.firstWhere(
+      (c) => c.id == _selectedCategoryId,
+      orElse: () => defaultCategories.first,
+    );
+    final categoryId = selected.type == CategoryType.custom ? selected.id : null;
+    final siblingOrders =
+        _tasks.where((t) => t.categoryId == categoryId).map((t) => t.order);
+    final nextOrder = siblingOrders.isEmpty
+        ? 0
+        : siblingOrders.reduce((a, b) => a > b ? a : b) + 1;
+    final task = Task(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: '새 할일',
+      isToday: false, // 달력에서 만든 일정은 '오늘 할일'에 자동 추가하지 않는다.
+      categoryId: categoryId,
+      dueDate: DateTime(date.year, date.month, date.day),
+      order: nextOrder,
+    );
+    setState(() => _tasks.add(task));
+    if (widget.useFirebase) FirestoreService.instance.addTask(task);
+    _onTaskSelected(task); // 상세 패널 열기(넓은 화면=슬라이드, 좁은 화면=전체화면)
+  }
+
   // '오늘 할일'에 아직 없는 작업들을 보여주고, +를 누르는 즉시 오늘 할일에 추가한다.
   Future<void> _showTaskSuggestionDialog() async {
     final candidates = _tasks.where((t) => !t.isToday).toList();
@@ -460,6 +486,9 @@ class _HomeScreenState extends State<HomeScreen> {
         tasks: _tasks,
         customCategories: _customCategories,
         onTaskSelected: _onTaskSelected,
+        onCreateOnDate: _onCreateTaskOnDate,
+        onTaskChanged: _onTaskChanged,
+        onTaskDeleted: _onTaskDeleted,
         selectedTaskId: _selectedTask?.id,
       );
     }

@@ -24,7 +24,6 @@ class DetailPanel extends StatefulWidget {
 
 class _DetailPanelState extends State<DetailPanel> {
   late bool _isToday;
-  late bool _isRange;
   late DateTime? _startDate;
   late DateTime? _dueDate;
   late RepeatType _repeatType;
@@ -55,8 +54,9 @@ class _DetailPanelState extends State<DetailPanel> {
 
   void _syncFromTask(Task task) {
     _isToday = task.isToday;
-    _isRange = task.startDate != null;
-    _startDate = task.startDate;
+    // 단일 마감일(startDate=null)도 시작일 칸에 마감일을 채워 두 칸을 항상 보여준다.
+    // 저장 시 시작일==종료일이면 다시 단일 마감일로 환원한다(_notifyChanged).
+    _startDate = task.startDate ?? task.dueDate;
     _dueDate = task.dueDate;
     _repeatType = task.repeatType;
     _repeatIntervalDays = task.repeatIntervalDays;
@@ -83,7 +83,8 @@ class _DetailPanelState extends State<DetailPanel> {
       ..title = _titleController.text
       ..categoryId = _categoryId
       ..isToday = _isToday
-      ..startDate = _isRange ? _startDate : null
+      // 시작일==종료일(또는 시작일 없음)이면 단일 마감일 → startDate=null.
+      ..startDate = _isSingleDeadline() ? null : _startDate
       ..dueDate = _dueDate
       ..repeatType = _repeatType
       ..repeatIntervalDays = _repeatIntervalDays
@@ -91,6 +92,15 @@ class _DetailPanelState extends State<DetailPanel> {
       ..memo = _memoController.text;
     widget.onTaskChanged(widget.task);
   }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // 시작일이 없거나 시작일==종료일이면 '단일 마감일'로 취급한다.
+  bool _isSingleDeadline() =>
+      _startDate == null ||
+      _dueDate == null ||
+      _isSameDay(_startDate!, _dueDate!);
 
   Future<void> _pickDate(bool isStart) async {
     final initial = (isStart ? _startDate : _dueDate) ?? DateTime.now();
@@ -102,17 +112,15 @@ class _DetailPanelState extends State<DetailPanel> {
     );
     if (picked == null) return;
 
-    // 기간 설정 시 시작일이 종료일보다 늦을 수 없음 — 달력 뷰가 역전된
-    // 구간을 그리지 못해 일정이 아예 안 보이는 문제로 이어지므로 저장 전에 막는다.
-    if (_isRange) {
-      if (isStart && _dueDate != null && picked.isAfter(_dueDate!)) {
-        setState(() => _dateError = '시작일은 종료일보다 늦을 수 없습니다.');
-        return;
-      }
-      if (!isStart && _startDate != null && picked.isBefore(_startDate!)) {
-        setState(() => _dateError = '종료일은 시작일보다 빠를 수 없습니다.');
-        return;
-      }
+    // 시작일이 종료일보다 늦을 수 없음 — 달력 뷰가 역전된 구간을 그리지 못해
+    // 일정이 아예 안 보이는 문제로 이어지므로 저장 전에 막는다.
+    if (isStart && _dueDate != null && picked.isAfter(_dueDate!)) {
+      setState(() => _dateError = '시작일은 종료일보다 늦을 수 없습니다.');
+      return;
+    }
+    if (!isStart && _startDate != null && picked.isBefore(_startDate!)) {
+      setState(() => _dateError = '종료일은 시작일보다 빠를 수 없습니다.');
+      return;
     }
 
     setState(() {
@@ -320,12 +328,14 @@ class _DetailPanelState extends State<DetailPanel> {
                       if (!v) {
                         _startDate = null;
                         _dueDate = null;
-                        _isRange = false;
                         // 기한 없이는 반복이 계산될 기준일이 없어 다음 회차가
                         // 생성되지 않으므로, 기한을 끄면 반복도 함께 끈다.
                         _repeatType = RepeatType.none;
                       } else {
-                        _dueDate = DateTime.now();
+                        // 기본은 시작일==종료일(=단일 마감일). 종료일을 뒤로 바꾸면 기간이 된다.
+                        final now = DateTime.now();
+                        _startDate = now;
+                        _dueDate = now;
                       }
                     });
                     _notifyChanged();
@@ -337,39 +347,15 @@ class _DetailPanelState extends State<DetailPanel> {
             ],
           ),
           if (_dueDate != null || _startDate != null) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                _ModeChip(
-                  label: '단일 마감일',
-                  selected: !_isRange,
-                  onTap: () => setState(() {
-                    _isRange = false;
-                    _dateError = null;
-                  }),
-                ),
-                _ModeChip(
-                  label: '기간',
-                  selected: _isRange,
-                  onTap: () => setState(() {
-                    _isRange = true;
-                    _startDate ??= DateTime.now();
-                    _dateError = null;
-                  }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (_isRange)
-              _DateRow(
-                label: '시작일',
-                date: _startDate,
-                onTap: () => _pickDate(true),
-              ),
+            const SizedBox(height: 4),
+            // 시작일==종료일이면 단일 마감일, 다르면 기간. 별도 모드 버튼 없이 두 날짜만 지정한다.
             _DateRow(
-              label: _isRange ? '종료일' : '마감일',
+              label: '시작일',
+              date: _startDate,
+              onTap: () => _pickDate(true),
+            ),
+            _DateRow(
+              label: '종료일',
               date: _dueDate,
               onTap: () => _pickDate(false),
             ),

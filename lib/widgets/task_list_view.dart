@@ -242,8 +242,8 @@ class _TaskItem extends StatelessWidget {
                 GestureDetector(
                   onTap: onToggle,
                   child: Container(
-                    width: 22,
-                    height: 22,
+                    width: 26,
+                    height: 26,
                     margin: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -258,7 +258,7 @@ class _TaskItem extends StatelessWidget {
                           : Colors.transparent,
                     ),
                     child: task.isCompleted
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        ? const Icon(Icons.check, size: 17, color: Colors.white)
                         : null,
                   ),
                 ),
